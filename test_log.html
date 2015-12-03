@@ -1,0 +1,92 @@
+<html>
+
+<head>
+    <script src="jquery.js"></script>
+    <script src="kf6api.js"></script>
+    <script>
+    function loginPressed() {
+        var serverURL = $('#serverURL').val();
+        kf6.setBaseURL(serverURL);
+
+        var uname = $('#uname').val();
+        var password = $('#password').val();
+        kf6.login(uname, password, function() {
+            getCommunities();
+        }, function(data) {
+            alert('login failed: ' + data.status);
+        });
+    }
+
+    function getCommunities() {
+        kf6.getCommunities(function(data) {
+            $('#communities').html('');
+            data.forEach(function(each) {
+                var li = '';
+                li += '<li>';
+                li += each._community.title;
+                li += '<input type="button" value="get my activities" onclick="communityPressed(\'' + each.communityId + '\')">';
+                li += '<input type="button" value="add record" onclick="addRecordPressed(\'' + each.communityId + '\')">';
+                li += '</li>';
+                $('#communities').append(li);
+            });
+        })
+    }
+
+    function communityPressed(communityId) {
+        kf6.setCommunity(communityId);
+        kf6.connect('GET', 'api/records/mine/' + communityId, {}, function(data) {
+            $('#records').html('<tr><th>Time</th><th>Type</th><th>Body</th></tr>');
+            data.forEach(function(each) {
+                var tr = '';
+                tr += '<tr>';
+                tr += '<td>' + each.timestamp + '</td>';
+                tr += '<td>' + each.type + '</td>';
+                tr += '<td>' + JSON.stringify(each) + '</td>';
+                tr += '</tr>';
+                $('#records').append(tr);
+            });
+        });
+    }
+
+    function addRecordPressed(communityId) {
+        kf6.setCommunity(communityId);
+        kf6.connect('POST', 'api/records/' + communityId, {
+            type: 'custom_record',
+            data: {
+                x: 100,
+                y: 100
+            }
+        }, function(data) {
+            window.alert('succeeded');
+        });
+    }
+    </script>
+</head>
+
+<body>
+    <!-- login console -->
+    <ul>
+        <li>serverURL:
+            <input id="serverURL" type="textfield" value="http://localhost:9000/">
+        </li>
+        <li>user:
+            <input id="uname" type="textfield" value="yoshiaki.matsuzawa@gmail.com">
+        </li>
+        <li>password:
+            <input id="password" type="textfield">
+        </li>
+        <li>
+            <input type="button" value="Login" onclick="loginPressed()">
+        </li>
+    </ul>
+    <!-- communities -->
+    <h1>communities:</h1>
+    <ul id="communities">
+    </ul>
+    <!-- records -->
+    <h1>records:</h1>
+    <table border="1" id="records">
+    </table>
+</body>
+
+</html>
