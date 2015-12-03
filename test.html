@@ -1,27 +1,113 @@
 <html>
+
 <head>
-	<script src="jquery.js"></script>
-	<script>
-		console.log('hello, world');	
-		$(document).ready(function(){
-			$('#hoge').html('XX');
-			$.post('http://localhost:9000/auth/local/', {email: 'yoshiaki.matsuzawa@gmail.com',password: 'test'}, function(data){
-				console.log(data);
-			});
-			// $.post('http://localhost:9000/auth/local?callback=?', {email: 'yoshiaki.matsuzawa@gmail.com',password: 'test'}, function(data){
-			// 	//console.log(data);
-			// });
-			// $.ajax({
-			// 	type: 'post',
-			// 	url: 'http://localhost:9000/auth/local?callback=a',
-			// 	data: {email: 'yoshiaki.matsuzawa@gmail.com',password: 'test'},
-			// 	datatype: 'jsonp',
-			// 	success: function(data){}
-			// });
-		});
-	</script>
+    <script src="jquery.js"></script>
+    <script>
+    var token;
+
+    function login() {
+        var uname = $('#uname').val();
+        var password = $('#password').val();
+
+        $.post('http://localhost:9000/auth/local/', {
+            email: uname,
+            password: password
+        }, function(data) {
+            token = data.token;
+            $.get('http://localhost:9000/api/users/myRegistrations', {
+                access_token: token //to be better if using authorization header
+            }, function(data) {
+                data.forEach(function(each) {
+                    var li = '';
+                    li += '<li>';
+                    li += each._community.title;
+                    li += '<input type="button" value="get" onclick="getCommunity(\'' + each.communityId + '\')">';
+                    li += '</li>';
+                    $('#communities').append(li);
+                });
+            });
+        });
+    }
+
+    function getCommunity(communityId) {
+        var obj = {
+            //            access_token: token,
+            query: {
+                communityId: communityId,
+                pagesize: 1000
+            }
+        };
+        connect('api/contributions/' + communityId + '/search', 'POST', obj, function(data, type, result) {
+			$('#notes').html('<tr><th>Title</th><th>Body</th></tr>');
+            data.forEach(function(each) {
+                var tr = '';
+                tr += '<tr>';
+                tr += '<td>' + each.title + '</td>';
+                tr += '<td>' + each.data.body + '</td>';
+                tr += '</tr>';
+                $('#notes').append(tr);
+            });
+        });
+        //         $.post('http://localhost:9000/api/contributions/' + communityId + '/search?access_token='+token, JSON.stringify(obj), function(data) {
+        //             console.log(data);
+        //         });
+    }
+
+    var baseURL = 'http://localhost:9000/';
+    function connect(path, method, data, success) {
+    	var url = baseURL + path;
+        $.ajax({
+            url: url,
+            type: method,
+            headers: {
+            	'authorization' : 'Bearer ' + token
+            },
+            contentType: 'application/json',
+            dataType: 'json',
+            data: JSON.stringify(data),
+            success: success
+        });
+    }
+
+    // function getCommunity(communityId) {
+    //     $.get('http://localhost:9000/api/communities/' + communityId + '/views', {
+    //         access_token: token
+    //     }, function(data) {
+    //         console.log(data);
+    //     });
+    // }
+
+    $(document).ready(function() {
+        // $('#hoge').html('XX');
+
+    });
+    </script>
 </head>
+
 <body>
-	<h1 id="hoge">test2</h1>
+
+    <!-- login console -->    	
+    <ul>
+        <li>user:
+            <input id="uname" type="textfield" value="yoshiaki.matsuzawa@gmail.com">
+        </li>
+        <li>password:
+            <input id="password" type="textfield">
+        </li>
+        <li>
+            <input type="button" value="Login" onclick="login()">
+        </li>
+    </ul>
+
+    <!-- communities -->    
+    <h1>communities:</h1>
+    <ul id="communities">
+    </ul>
+
+    <!-- notes -->
+    <h1>notes:</h1>
+    <table border="1" id="notes">
+    </table>
 </body>
+
 </html>
