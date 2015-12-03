@@ -1,0 +1,27 @@
+<html>
+<head>
+	<script src="jquery.js"></script>
+	<script>
+		console.log('hello, world');	
+		$(document).ready(function(){
+			$('#hoge').html('XX');
+			$.post('http://localhost:9000/auth/local/', {email: 'yoshiaki.matsuzawa@gmail.com',password: 'test'}, function(data){
+				console.log(data);
+			});
+			// $.post('http://localhost:9000/auth/local?callback=?', {email: 'yoshiaki.matsuzawa@gmail.com',password: 'test'}, function(data){
+			// 	//console.log(data);
+			// });
+			// $.ajax({
+			// 	type: 'post',
+			// 	url: 'http://localhost:9000/auth/local?callback=a',
+			// 	data: {email: 'yoshiaki.matsuzawa@gmail.com',password: 'test'},
+			// 	datatype: 'jsonp',
+			// 	success: function(data){}
+			// });
+		});
+	</script>
+</head>
+<body>
+	<h1 id="hoge">test2</h1>
+</body>
+</html>
