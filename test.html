@@ -2,43 +2,42 @@
 
 <head>
     <script src="jquery.js"></script>
+    <script src="kf6api.js"></script>
     <script>
-    var token;
+    function loginPressed() {
+        var serverURL = $('#serverURL').val();
+        kf6.setBaseURL(serverURL);
 
-    function login() {
         var uname = $('#uname').val();
         var password = $('#password').val();
-
-        $.post('http://localhost:9000/auth/local/', {
-            email: uname,
-            password: password
+        kf6.login(uname, password, function() {
+            getCommunities();
         }, function(data) {
-            token = data.token;
-            $.get('http://localhost:9000/api/users/myRegistrations', {
-                access_token: token //to be better if using authorization header
-            }, function(data) {
-                data.forEach(function(each) {
-                    var li = '';
-                    li += '<li>';
-                    li += each._community.title;
-                    li += '<input type="button" value="get" onclick="getCommunity(\'' + each.communityId + '\')">';
-                    li += '</li>';
-                    $('#communities').append(li);
-                });
-            });
+            alert('login failed: ' + data.status);
         });
     }
 
-    function getCommunity(communityId) {
-        var obj = {
-            //            access_token: token,
-            query: {
-                communityId: communityId,
-                pagesize: 1000
-            }
+    function getCommunities() {
+        kf6.getCommunities(function(data) {
+            $('#communities').html('');
+            data.forEach(function(each) {
+                var li = '';
+                li += '<li>';
+                li += each._community.title;
+                li += '<input type="button" value="get" onclick="communityPressed(\'' + each.communityId + '\')">';
+                li += '</li>';
+                $('#communities').append(li);
+            });
+        })
+    }
+
+    function communityPressed(communityId) {
+        kf6.setCommunity(communityId);
+        var query = {
+            pagesize: 1000
         };
-        connect('api/contributions/' + communityId + '/search', 'POST', obj, function(data, type, result) {
-			$('#notes').html('<tr><th>Title</th><th>Body</th></tr>');
+        kf6.getObjects(query, function(data) {
+            $('#notes').html('<tr><th>Title</th><th>Body</th></tr>');
             data.forEach(function(each) {
                 var tr = '';
                 tr += '<tr>';
@@ -48,46 +47,16 @@
                 $('#notes').append(tr);
             });
         });
-        //         $.post('http://localhost:9000/api/contributions/' + communityId + '/search?access_token='+token, JSON.stringify(obj), function(data) {
-        //             console.log(data);
-        //         });
     }
-
-    var baseURL = 'http://localhost:9000/';
-    function connect(path, method, data, success) {
-    	var url = baseURL + path;
-        $.ajax({
-            url: url,
-            type: method,
-            headers: {
-            	'authorization' : 'Bearer ' + token
-            },
-            contentType: 'application/json',
-            dataType: 'json',
-            data: JSON.stringify(data),
-            success: success
-        });
-    }
-
-    // function getCommunity(communityId) {
-    //     $.get('http://localhost:9000/api/communities/' + communityId + '/views', {
-    //         access_token: token
-    //     }, function(data) {
-    //         console.log(data);
-    //     });
-    // }
-
-    $(document).ready(function() {
-        // $('#hoge').html('XX');
-
-    });
     </script>
 </head>
 
 <body>
-
-    <!-- login console -->    	
+    <!-- login console -->
     <ul>
+        <li>serverURL:
+            <input id="serverURL" type="textfield" value="http://localhost:9000/">
+        </li>
         <li>user:
             <input id="uname" type="textfield" value="yoshiaki.matsuzawa@gmail.com">
         </li>
@@ -95,15 +64,13 @@
             <input id="password" type="textfield">
         </li>
         <li>
-            <input type="button" value="Login" onclick="login()">
+            <input type="button" value="Login" onclick="loginPressed()">
         </li>
     </ul>
-
-    <!-- communities -->    
+    <!-- communities -->
     <h1>communities:</h1>
     <ul id="communities">
     </ul>
-
     <!-- notes -->
     <h1>notes:</h1>
     <table border="1" id="notes">
