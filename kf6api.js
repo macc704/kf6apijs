@@ -11,7 +11,7 @@ var kf6 = {
     login: function(uname, password, success, failure) {
         var self = this;
         this.connect('POST', 'auth/local/', {
-            email: uname,
+            userName: uname,
             password: password
         }, function(data) {
             self.token = data.token;
