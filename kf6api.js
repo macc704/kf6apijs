@@ -23,23 +23,53 @@ var kf6 = {
     getCommunities: function(success, failure) {
         this.connect('GET', 'api/users/myRegistrations', {}, success, failure);
     },
+    getCommunity: function(success, failure) {
+        this.connect('GET', 'api/communities/' + this.communityId, null, success, failure);
+    },
+    getMe: function(success, failure) {
+        this.connect('GET', 'api/users/me', null, success, failure);
+    },
+    getViews: function(success, failure) {
+        this.connect('GET', 'api/communities/' + this.communityId + '/views',
+            null, success, failure);
+    },
+    getAuthors: function(success, failure) {
+        this.connect('GET', 'api/communities/' + this.communityId + '/authors',
+            null, success, failure);
+    },
+    getGroups: function(success, failure) {
+        this.connect('GET', 'api/communities/' + this.communityId + '/groups',
+            null, success, failure);
+    },
+    getObjectsCount: function(query, success, failure) {
+        this.connect('POST', 'api/contributions/' + this.communityId + '/search/count', {
+            query: query
+        }, success, failure);
+    },
     getObjects: function(query, success, failure) {
         this.connect('POST', 'api/contributions/' + this.communityId + '/search', {
             query: query
         }, success, failure);
     },
+    getLinksFrom: function(fromId, success, failure) {
+        this.connect('GET', 'api/links/from/' + fromId, null, success, failure);
+    },
     connect: function(method, path, data, success, failure) {
         var url = this.getURL(path);
-        $.ajax({
-                url: url,
-                type: method,
-                headers: {
-                    'authorization': 'Bearer ' + this.token
-                },
-                contentType: 'application/json',
-                dataType: 'json',
-                data: JSON.stringify(data)
-            })
+        var req = {
+            url: url,
+            type: method,
+            headers: {
+                'authorization': 'Bearer ' + this.token
+            }
+        };
+        if (data) {
+            req.contentType = 'application/json';
+            req.dataType = 'json';
+            req.data = JSON.stringify(data);
+        }
+        req.cache = false;
+        $.ajax(req)
             .done(success)
             .fail(failure);
     },
