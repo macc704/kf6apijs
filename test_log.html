@@ -24,7 +24,8 @@
                 var li = '';
                 li += '<li>';
                 li += each._community.title;
-                li += '<input type="button" value="get my activities" onclick="communityPressed(\'' + each.communityId + '\')">';
+                li += '<input type="button" value="get my activities" onclick="getMyActivitiesPressed(\'' + each.communityId + '\')">';
+                li += '<input type="button" value="get all activities" onclick="getCommunityActivitiesPressed(\'' + each.communityId + '\')">';
                 li += '<input type="button" value="add record" onclick="addRecordPressed(\'' + each.communityId + '\')">';
                 li += '</li>';
                 $('#communities').append(li);
@@ -32,21 +33,35 @@
         })
     }
 
-    function communityPressed(communityId) {
+    function getMyActivitiesPressed(communityId) {
         kf6.setCommunity(communityId);
-        kf6.connect('GET', 'api/records/mine/' + communityId, {}, function(data) {
-            $('#records').html('<tr><th>Time</th><th>Type</th><th>Body</th></tr>');
+        var me = kf6.getMeAsAuthor(function(author) {
+            searchRecord(communityId, {
+                authorId: author._id
+            });
+        });
+    };
+
+    function getCommunityActivitiesPressed(communityId) {
+        searchRecord(communityId, {});
+    }
+
+    function searchRecord(communityId, query) {
+        kf6.setCommunity(communityId);
+        kf6.getRecords(query, function(data) {
+            $('#records').html('<tr><th>Time</th><th>authorId</th><th>Type</th><th>Body</th></tr>');
             data.forEach(function(each) {
                 var tr = '';
                 tr += '<tr>';
                 tr += '<td>' + each.timestamp + '</td>';
+                tr += '<td>' + each.authorId + '</td>';
                 tr += '<td>' + each.type + '</td>';
                 tr += '<td>' + JSON.stringify(each) + '</td>';
                 tr += '</tr>';
                 $('#records').append(tr);
             });
         });
-    }
+    };
 
     function addRecordPressed(communityId) {
         kf6.setCommunity(communityId);

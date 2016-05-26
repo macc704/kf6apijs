@@ -29,6 +29,9 @@ var kf6 = {
     getMe: function(success, failure) {
         this.connect('GET', 'api/users/me', null, success, failure);
     },
+    getMeAsAuthor: function(success, failure) {
+        this.connect('GET', 'api/authors/' + this.communityId + '/me', null, success, failure);
+    },
     getViews: function(success, failure) {
         this.connect('GET', 'api/communities/' + this.communityId + '/views',
             null, success, failure);
@@ -48,6 +51,11 @@ var kf6 = {
     },
     getObjects: function(query, success, failure) {
         this.connect('POST', 'api/contributions/' + this.communityId + '/search', {
+            query: query
+        }, success, failure);
+    },
+    getRecords: function(query, success, failure) {
+        this.connect('POST', 'api/records/search/' + this.communityId, {
             query: query
         }, success, failure);
     },
