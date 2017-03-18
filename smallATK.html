@@ -41,6 +41,7 @@
                 }
             });
 
+            /*
             var query = {
                 pagesize: 1000,
                 searchMode: 'title',
@@ -59,7 +60,26 @@
                         }
                     });
                 });
+            */
 
+            var query = {
+                pagesize: 1000,
+                searchMode: 'title',
+                viewIds: [viewId]
+            };
+
+            kf6.getObjects(query, function(conts) {
+                conts.forEach(function(cont) {
+                    cont.authors.forEach(function(authorId) {
+                        if (cont.type === 'Note') {
+                            gAuthorsTable[authorId].notes.push(cont);
+                        } else if (cont.type === 'Drawing') {
+                            gAuthorsTable[authorId].drawings.push(cont);
+                        } else {
+                            gAuthorsTable[authorId].others.push(cont);
+                        }
+                    });
+                });
                 $('#notes').html('<tr><th>Title</th><th># of Notes</th><th># of Drawings</th><th># of Others</th></tr>');
                 gAuthors.forEach(function(author) {
                     var tr = '';
