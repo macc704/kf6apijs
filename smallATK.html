@@ -1,0 +1,196 @@
+<html>
+
+<head>
+    <script src="jquery.js"></script>
+    <script src="kf6api.js"></script>
+    <script>
+    function loginPressed() {
+        var serverURL = $('#serverURL').val();
+        kf6.setBaseURL(serverURL);
+
+        var uname = $('#uname').val();
+        var password = $('#password').val();
+        kf6.login(uname, password, function() {
+            getCommunities();
+        }, function(data) {
+            alert('login failed: ' + data.status);
+        });
+    }
+
+    function getCommunities() {
+        kf6.getCommunities(function(data) {
+            $('#communities').html('');
+            data.forEach(function(each) {
+                var li = '';
+                li += '<li>';
+                li += each._community.title;
+                li += '<input type="button" value="get" onclick="communityPressed(\'' + each.communityId + '\')">';
+                li += '</li>';
+                $('#communities').append(li);
+            });
+        })
+    }
+
+    function viewPressed(viewId) {
+        kf6.getLinksFrom(viewId, function(data) {
+
+            var ids = [];
+            data.forEach(function(each) {
+                if (each.type === 'contains') {
+                    ids.push(each.to);
+                }
+            });
+
+            var query = {
+                pagesize: 1000,
+                searchMode: 'title',
+                ids: ids
+            };
+
+            kf6.getObjects(query, function(conts) {
+                conts.forEach(function(cont) {
+                    cont.authors.forEach(function(authorId) {
+                        if (cont.type === 'Note') {
+                            gAuthorsTable[authorId].notes.push(cont);
+                        } else if (cont.type === 'Drawing') {
+                            gAuthorsTable[authorId].drawings.push(cont);
+                        } else {
+                            gAuthorsTable[authorId].others.push(cont);
+                        }
+                    });
+                });
+
+                $('#notes').html('<tr><th>Title</th><th># of Notes</th><th># of Drawings</th><th># of Others</th></tr>');
+                gAuthors.forEach(function(author) {
+                    var tr = '';
+                    tr += '<tr>';
+                    tr += '<td>' + author.firstName + ' ' + author.lastName + '</td>';
+                    tr += '<td>' + author.notes.length + '</td>';
+                    tr += '<td>' + author.drawings.length + '</td>';                    
+                    tr += '<td>' + author.others.length + '</td>';                                        
+                    tr += '</tr>';
+                    $('#notes').append(tr);
+                });
+                /*
+                $('#notes').html('<tr><th>Title</th><th>Type</th></tr>');                
+                conts.forEach(function(each) {
+                    var tr = '';
+                    tr += '<tr>';
+                    tr += '<td>' + each.title + '</td>';
+                    tr += '<td>' + each.type + '</td>';
+                    tr += '</tr>';
+                    $('#notes').append(tr);
+                });
+                */
+            });
+
+        });
+    }
+
+    var gAuthors;
+    var gAuthorsTable = {};
+
+    function initialize(communityId, handler) {
+        kf6.setCommunity(communityId);
+        kf6.getAuthors(function(authors) {
+            gAuthors = authors;
+            authors.forEach(function(author) {
+                gAuthorsTable[author._id] = author;
+                author.notes = [];
+                author.drawings = [];
+                author.others = [];
+            });
+            handler();
+        });
+    }
+
+    function communityPressed(communityId) {
+        initialize(communityId, function() {
+            kf6.getViews(function(data) {
+                $('#views').html('<tr><th>Title</th><th></th></tr>');
+                data.forEach(function(each) {
+                    var tr = '';
+                    tr += '<tr>';
+                    tr += '<td>' + each.title + '</td>';
+                    tr += '<td>';
+                    tr += '<input type="button" value="get" onclick="viewPressed(\'' + each._id + '\')">';
+                    tr += '</td>';
+                    tr += '</tr>';
+                    $('#views').append(tr);
+                });
+            });
+        });
+        /*
+        var query = {
+            pagesize: 1000
+        };
+        kf6.getObjects(query, function(data) {
+            $('#notes').html('<tr><th>Title</th><th>Body</th></tr>');
+            data.forEach(function(each) {
+                var tr = '';
+                tr += '<tr>';
+                tr += '<td>' + each.title + '</td>';
+                tr += '<td>' + each.data.body + '</td>';
+                tr += '</tr>';
+                $('#notes').append(tr);
+            });
+        });
+        */
+
+
+        /*OLD CODE for View*/
+        /*
+        var query = {
+            pagesize: 1000,
+            searchMode: 'title',
+            type: 'View'
+        };
+        kf6.getObjects(query, function(data) {
+            $('#notes').html('<tr><th>Title</th><th>Body</th></tr>');
+            data.forEach(function(each) {
+                var tr = '';
+                tr += '<tr>';
+                tr += '<td>' + each.title + '</td>';
+                tr += '<td>';
+                tr += '<input type="button" value="get" onclick="viewPressed(\'' + each._id + '\')">';
+                tr += '</td>';                
+                tr += '</tr>';
+                $('#notes').append(tr);
+            });
+        });  
+        */
+    }
+    </script>
+</head>
+
+<body>
+    <!-- login console -->
+    <ul>
+        <li>serverURL:
+            <input id="serverURL" type="textfield" value="http://localhost:9000/">
+        </li>
+        <li>user:
+            <input id="uname" type="textfield" value="yoshiaki.matsuzawa@gmail.com">
+        </li>
+        <li>password:
+            <input id="password" type="textfield" value="test">
+        </li>
+        <li>
+            <input type="button" value="Login" onclick="loginPressed()">
+        </li>
+    </ul>
+    <!-- communities -->
+    <h1>communities:</h1>
+    <ul id="communities">
+    </ul>
+    <!-- notes -->
+    <h1>views:</h1>
+    <table border="1" id="views">
+    </table>
+    <!-- notes -->
+    <h1>notes:</h1>
+    <table border="1" id="notes">
+    </table>
+</body>
+
+</html>
