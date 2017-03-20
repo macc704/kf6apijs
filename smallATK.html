@@ -69,14 +69,20 @@
             };
 
             kf6.getObjects(query, function(conts) {
+                gAuthors.forEach(function(author) {
+                    author[viewId] = {};
+                    author[viewId].notes = [];
+                    author[viewId].drawings = [];
+                    author[viewId].others = [];                    
+                });
                 conts.forEach(function(cont) {
                     cont.authors.forEach(function(authorId) {
                         if (cont.type === 'Note') {
-                            gAuthorsTable[authorId].notes.push(cont);
+                            gAuthorsTable[authorId][viewId].notes.push(cont);
                         } else if (cont.type === 'Drawing') {
-                            gAuthorsTable[authorId].drawings.push(cont);
+                            gAuthorsTable[authorId][viewId].drawings.push(cont);
                         } else {
-                            gAuthorsTable[authorId].others.push(cont);
+                            gAuthorsTable[authorId][viewId].others.push(cont);
                         }
                     });
                 });
@@ -85,9 +91,9 @@
                     var tr = '';
                     tr += '<tr>';
                     tr += '<td>' + author.firstName + ' ' + author.lastName + '</td>';
-                    tr += '<td>' + author.notes.length + '</td>';
-                    tr += '<td>' + author.drawings.length + '</td>';                    
-                    tr += '<td>' + author.others.length + '</td>';                                        
+                    tr += '<td>' + author[viewId].notes.length + '</td>';
+                    tr += '<td>' + author[viewId].drawings.length + '</td>';
+                    tr += '<td>' + author[viewId].others.length + '</td>';
                     tr += '</tr>';
                     $('#notes').append(tr);
                 });
@@ -116,9 +122,6 @@
             gAuthors = authors;
             authors.forEach(function(author) {
                 gAuthorsTable[author._id] = author;
-                author.notes = [];
-                author.drawings = [];
-                author.others = [];
             });
             handler();
         });
