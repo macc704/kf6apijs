@@ -1,8 +1,12 @@
 <html>
 
 <head>
+    <link rel="stylesheet" type="text/css" href="bower_components/dcjs/dc.css">
     <script src="jquery.js"></script>
     <script src="kf6api.js"></script>
+    <script src="bower_components/crossfilter2/crossfilter.min.js"></script>
+    <script src="bower_components/d3/d3.min.js"></script>
+    <script src="bower_components/dcjs/dc.min.js"></script>
     <script>
     function loginPressed() {
         var serverURL = $('#serverURL').val();
@@ -88,7 +92,7 @@
                 if (object.type === 'Note') {
                     numOfNotes++;
                 }
-            });         
+            });
 
             gAuthors.forEach(function(author) {
                 var counter = author[viewId];
@@ -107,7 +111,7 @@
                     modifylist[modify.targetId] = 1;
                 });
                 counter.modifycount = Object.keys(modifylist).length;
-            });             
+            });
 
             //make table
             $('#notes').html('<tr><th>Title</th><th># of Notes</th><th># of Drawings</th><th># of reads</th><th># of readnotes</th><th>% of readings</th><th># of edit</th><th># of editnotes</th></tr>');
@@ -120,10 +124,10 @@
                 tr += '<td>' + counter.drawings.length + '</td>';
                 //tr += '<td>' + counter.others.length + '</td>';
                 tr += '<td>' + counter.reads.length + '</td>';
-                tr += '<td>' + counter.readcount + '</td>';                
+                tr += '<td>' + counter.readcount + '</td>';
                 tr += '<td>' + counter.percentOfReading + '</td>';
-                tr += '<td>' + counter.modifies.length + '</td>';                
-                tr += '<td>' + counter.modifycount + '</td>';                                
+                tr += '<td>' + counter.modifies.length + '</td>';
+                tr += '<td>' + counter.modifycount + '</td>';
                 tr += '</tr>';
                 $('#notes').append(tr);
             });
@@ -135,6 +139,7 @@
         loadAuthors(function() {
             loadObjects(function() {
                 loadRecords(function() {
+                    initdc(gRecords);
                     handler();
                 });
             });
@@ -209,6 +214,71 @@
             handler();
         });
     }
+
+    function initdc(data) {
+        var parseDate = d3.time.format("%Y-%m-%dT%H:%M:%S.%LZ").parse;
+        data.forEach(function(d) {
+            d.date = parseDate(d.timestamp);
+            if (d.type === 'read') {
+                d.read = 1;
+            } else {
+                d.read = 0;
+            }
+            d.total = 1;
+        });
+
+        var ndx = crossfilter(data);
+
+        var dateDim = ndx.dimension(function(d) {
+            return d.date;
+        });
+        var typeDim = ndx.dimension(function(d) {
+            return d.type;
+        });
+
+        var minDate = dateDim.bottom(1)[0].date;
+        var maxDate = dateDim.top(1)[0].date;
+
+        //console.log(minDate);
+        //console.log(maxDate);
+
+        var readGroup = dateDim.group().reduceSum(function(d) {
+            return d.read;
+        });
+
+        var hitslineChart = dc.barChart('#chart-line-hitsperday');
+        hitslineChart
+            .width(700).height(200)
+            .dimension(dateDim)
+            .group(readGroup, 'Read')
+            //.renderArea(true)//for line chart
+            .centerBar(true) //for line chart
+            .x(d3.time.scale().domain([minDate, maxDate]))
+            .legend(dc.legend().x(50).y(10).itemHeight(13).gap(5))
+            .yAxisLabel('Hits per day');
+
+
+        // dummy for update
+        var hits = dateDim.group().reduceSum(function(d) {
+            return d.total;
+        });
+        var dummy = dc.pieChart('#dummy');
+        dummy
+            .width(200).height(200)
+            .dimension(dateDim)
+            .group(hits)
+            .innerRadius(30);
+        dummy._doRedraw = function() {
+            var filtered = typeDim.filter('read').top(Infinity);
+            console.log('doRedraw');
+            //refreshNetworks();
+        };
+        dummy._doRender = function() {
+            console.log('doRender');
+            //refreshNetworks();
+        };
+        dc.renderAll();
+    }
     </script>
 </head>
 
@@ -239,7 +309,11 @@
     <!-- notes -->
     <h1>notes:</h1>
     <table border="1" id="notes">
-    </table>
+    </table>    
+    <br>
+    <div style="width: 80%;" id="chart-line-hitsperday">
+    </div>
+      
 </body>
 
 </html>
