@@ -88,7 +88,7 @@
                 if (object.type === 'Note') {
                     numOfNotes++;
                 }
-            });
+            });         
 
             gAuthors.forEach(function(author) {
                 var counter = author[viewId];
@@ -96,13 +96,21 @@
                 counter.reads.forEach(function(read) {
                     readinglist[read.targetId] = 1;
                 });
-                var len = Object.keys(readinglist).length;
-                counter.readlen = len;
-                counter.percentOfReading = Math.round((len / numOfNotes) * 10000) / 100;
+                counter.readcount = Object.keys(readinglist).length;
+                counter.percentOfReading = Math.round((counter.readcount / numOfNotes) * 10000) / 100;
             });
 
+            gAuthors.forEach(function(author) {
+                var counter = author[viewId];
+                var modifylist = {};
+                counter.modifies.forEach(function(modify) {
+                    modifylist[modify.targetId] = 1;
+                });
+                counter.modifycount = Object.keys(modifylist).length;
+            });             
+
             //make table
-            $('#notes').html('<tr><th>Title</th><th># of Notes</th><th># of Drawings</th><th># of Others</th><th># of reads</th><th># of modifies</th><th>% of readings</th></tr>');
+            $('#notes').html('<tr><th>Title</th><th># of Notes</th><th># of Drawings</th><th># of reads</th><th># of readnotes</th><th>% of readings</th><th># of edit</th><th># of editnotes</th></tr>');
             gAuthors.forEach(function(author) {
                 var counter = author[viewId];
                 var tr = '';
@@ -110,10 +118,12 @@
                 tr += '<td>' + author.firstName + ' ' + author.lastName + '</td>';
                 tr += '<td>' + counter.notes.length + '</td>';
                 tr += '<td>' + counter.drawings.length + '</td>';
-                tr += '<td>' + counter.others.length + '</td>';
+                //tr += '<td>' + counter.others.length + '</td>';
                 tr += '<td>' + counter.reads.length + '</td>';
-                tr += '<td>' + counter.modifies.length + '</td>';
+                tr += '<td>' + counter.readcount + '</td>';                
                 tr += '<td>' + counter.percentOfReading + '</td>';
+                tr += '<td>' + counter.modifies.length + '</td>';                
+                tr += '<td>' + counter.modifycount + '</td>';                                
                 tr += '</tr>';
                 $('#notes').append(tr);
             });
