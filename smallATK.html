@@ -51,11 +51,25 @@
                 counter.notes = [];
                 counter.drawings = [];
                 counter.others = [];
+                counter.reads = [];
+                counter.modifies = [];
                 author[viewId] = counter;
             });
 
             //count
             objects.forEach(function(object) {
+                object.records.forEach(function(record) {
+                    if (object.type === 'Note') {
+                        object.authors.forEach(function(authorId) {
+                            var counter = gAuthorsTable[authorId][viewId];
+                            if (record.type === 'read') {
+                                counter.reads.push(record);
+                            } else if (record.type === 'modified') {
+                                counter.modifies.push(record);
+                            }
+                        });
+                    }
+                });
                 object.authors.forEach(function(authorId) {
                     var counter = gAuthorsTable[authorId][viewId];
                     if (object.type === 'Note') {
@@ -68,23 +82,43 @@
                 });
             });
 
-            //make table
-            $('#notes').html('<tr><th>Title</th><th># of Notes</th><th># of Drawings</th><th># of Others</th></tr>');
+            //calc % of note read
+            var numOfNotes = 0;
+            objects.forEach(function(object) {
+                if (object.type === 'Note') {
+                    numOfNotes++;
+                }
+            });
+
             gAuthors.forEach(function(author) {
+                var counter = author[viewId];
+                var readinglist = {};
+                counter.reads.forEach(function(read) {
+                    readinglist[read.targetId] = 1;
+                });
+                var len = Object.keys(readinglist).length;
+                counter.readlen = len;
+                counter.percentOfReading = Math.round((len / numOfNotes) * 10000) / 100;
+            });
+
+            //make table
+            $('#notes').html('<tr><th>Title</th><th># of Notes</th><th># of Drawings</th><th># of Others</th><th># of reads</th><th># of modifies</th><th>% of readings</th></tr>');
+            gAuthors.forEach(function(author) {
+                var counter = author[viewId];
                 var tr = '';
                 tr += '<tr>';
                 tr += '<td>' + author.firstName + ' ' + author.lastName + '</td>';
-                tr += '<td>' + author[viewId].notes.length + '</td>';
-                tr += '<td>' + author[viewId].drawings.length + '</td>';
-                tr += '<td>' + author[viewId].others.length + '</td>';
+                tr += '<td>' + counter.notes.length + '</td>';
+                tr += '<td>' + counter.drawings.length + '</td>';
+                tr += '<td>' + counter.others.length + '</td>';
+                tr += '<td>' + counter.reads.length + '</td>';
+                tr += '<td>' + counter.modifies.length + '</td>';
+                tr += '<td>' + counter.percentOfReading + '</td>';
                 tr += '</tr>';
                 $('#notes').append(tr);
             });
         });
     }
-
-
-
 
     function initialize(communityId, handler) {
         kf6.setCommunity(communityId);
@@ -148,13 +182,23 @@
     var gRecords;
 
     function loadRecords(handler) {
+        gObjects.forEach(function(object) {
+            object.records = [];
+        });
         var query = {};
         kf6.getRecords(query, function(records) {
             gRecords = records;
+            records.forEach(function(record) {
+                var object = gObjectsTable[record.targetId];
+                if (!object) {
+                    //console.error('object not found in records. id=' + record.targetId)
+                    return;
+                }
+                object.records.push(record);
+            });
             handler();
         });
     }
-
     </script>
 </head>
 
@@ -168,7 +212,7 @@
             <input id="uname" type="textfield" value="yoshiaki.matsuzawa@gmail.com">
         </li>
         <li>password:
-            <input id="password" type="textfield" value="test">
+            <input id="password" type="password" value="test">
         </li>
         <li>
             <input type="button" value="Login" onclick="loginPressed()">
