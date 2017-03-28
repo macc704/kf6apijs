@@ -57,14 +57,20 @@
         objects.forEach(function(object) {
             object.records.forEach(function(record) {
                 if (object.type === 'Note') {
-                    object.authors.forEach(function(authorId) {
-                        var counter = gAuthorsTable[authorId][viewId];
-                        if (record.type === 'read') {
-                            counter.reads.push(record);
-                        } else if (record.type === 'modified') {
-                            counter.modifies.push(record);
-                        }
-                    });
+                    var counter = gAuthorsTable[record.authorId][viewId];
+                    if (record.type === 'read') {
+                        counter.reads.push(record);
+                    } else if (record.type === 'modified') {
+                        counter.modifies.push(record);
+                    }
+                    // object.authors.forEach(function(authorId) {
+                    //     var counter = gAuthorsTable[authorId][viewId];
+                    //     if (record.type === 'read') {
+                    //         counter.reads.push(record);
+                    //     } else if (record.type === 'modified') {
+                    //         counter.modifies.push(record);
+                    //     }
+                    // });
                 }
             });
             object.authors.forEach(function(authorId) {
@@ -88,6 +94,7 @@
         });
 
         gAuthors.forEach(function(author) {
+
             var counter = author[viewId];
             var readinglist = {};
             counter.reads.forEach(function(read) {
@@ -148,7 +155,7 @@
                 var tr = '';
                 tr += '<tr>';
                 tr += '<td>' + view.title + '</td>';
-                tr += '<td>' + view.data.numOfNotes + '</td>';                
+                tr += '<td>' + view.data.numOfNotes + '</td>';
                 tr += '<td>';
                 tr += '<input type="button" value="get" onclick="viewPressed(\'' + view._id + '\')">';
                 tr += '</td>';
@@ -270,8 +277,14 @@
                     objects.push(gObjectsTable[link.to]);
                 }
             });
+            var numOfNotes = 0;
+            objects.forEach(function(object) {
+                if (object.type === 'Note') {
+                    numOfNotes++;
+                }
+            });
             view.data.objects = objects;
-            view.data.numOfNotes = objects.length;
+            view.data.numOfNotes = numOfNotes;
             handler();
         });
     }
@@ -352,13 +365,14 @@
     <!-- login console -->
     <ul>
         <li>serverURL:
-            <input id="serverURL" type="textfield" value="http://localhost:9000/">
+            <!--            <input id="serverURL" type="textfield" value="http://localhost:9000/">-->
+            <input id="serverURL" type="textfield" value="https://kf6.ikit.org/">
         </li>
         <li>user:
             <input id="uname" type="textfield" value="yoshiaki.matsuzawa@gmail.com">
         </li>
         <li>password:
-            <input id="password" type="password" value="test">
+            <input id="password" type="password" value="testtest">
         </li>
         <li>
             <input type="button" value="Login" onclick="loginPressed()">
