@@ -2,6 +2,16 @@
 
 <head>
     <link rel="stylesheet" type="text/css" href="bower_components/dcjs/dc.css">
+    <style>
+    .link {
+        stroke: #ccc;
+    }
+
+    .node text {
+        pointer-events: none;
+        font: 10px sans-serif;
+    }
+    </style>
     <script src="jquery.js"></script>
     <script src="kf6api.js"></script>
     <script src="bower_components/crossfilter2/crossfilter.min.js"></script>
@@ -271,7 +281,7 @@
                 if (link.type === 'contains') {
                     var object = gObjectsTable[link.to];
                     if (!object) {
-                        console.error('object not found=' + link.to)
+                        console.info('object not found=' + link.to)
                         return;
                     }
                     objects.push(gObjectsTable[link.to]);
@@ -289,6 +299,9 @@
         });
     }
 
+    var hitslineChart;
+    var dateDim;
+
     function initdc(data) {
         var parseDate = d3.time.format("%Y-%m-%dT%H:%M:%S.%LZ").parse;
         data.forEach(function(d) {
@@ -303,7 +316,7 @@
 
         var ndx = crossfilter(data);
 
-        var dateDim = ndx.dimension(function(d) {
+        dateDim = ndx.dimension(function(d) {
             return d.date;
         });
         var typeDim = ndx.dimension(function(d) {
@@ -320,7 +333,7 @@
             return d.read;
         });
 
-        var hitslineChart = dc.barChart('#chart-line-hitsperday');
+        hitslineChart = dc.barChart('#chart-line-hitsperday');
         hitslineChart
             .width(700).height(200)
             .dimension(dateDim)
@@ -348,6 +361,7 @@
             if (gViewId) {
                 viewPressed(gViewId);
             }
+            showRange();
         };
         dummy._doRender = function() {
             var filtered = typeDim.filter('read').top(Infinity);
@@ -355,8 +369,169 @@
             if (gViewId) {
                 viewPressed(gViewId);
             }
+            showRange();
         };
         dc.renderAll();
+    }
+
+    function fromPressed() {
+        var text = document.getElementById('fromDate').value;
+        var parser = d3.time.format("%Y%m%d").parse;
+        var d3time = parser(text);
+        if (!d3time) {
+            window.alert('invalid dateformat');
+            return;
+        }
+        if (!hitslineChart) {
+            return;
+        }
+
+        var to;
+        var range = getRange();
+        if (range) {
+            to = range.to;
+        } else {
+            to = dateDim.top(1)[0].date;
+        }
+        hitslineChart.filter(null);
+        hitslineChart.filter(dc.filters.RangedFilter(d3time, to));
+        dc.redrawAll();
+    }
+
+    function toPressed() {
+        var text = document.getElementById('toDate').value;
+        var parser = d3.time.format("%Y%m%d").parse;
+        var d3time = parser(text);
+        if (!d3time) {
+            window.alert('invalid dateformat');
+            return;
+        }
+
+        if (!hitslineChart) {
+            return;
+        }
+
+        var from;
+        var range = getRange();
+        if (range) {
+            from = range.from;
+        } else {
+            from = dateDim.bottom(1)[0].date;
+        }
+        hitslineChart.filter(null);
+        hitslineChart.filter(dc.filters.RangedFilter(from, d3time));
+        dc.redrawAll();
+    }
+
+    function getRange() {
+        if (!hitslineChart) return null;
+        var rangedFilter = hitslineChart.filters()[0];
+        if (!rangedFilter) return null;
+        var from = rangedFilter[0];
+        var to = rangedFilter[1];
+        return { from: from, to: to };
+    }
+
+    function showRange() {
+        var range = getRange();
+        if (!range) {
+            document.getElementById('fromCurrent').innerHTML = '';
+            document.getElementById('toCurrent').innerHTML = '';
+            return;
+        }
+        document.getElementById('fromCurrent').innerHTML = range.from;
+        document.getElementById('toCurrent').innerHTML = range.to;
+    }
+
+    function openGraph() {
+        gAuthors.forEach(function(author) {
+            author.links = {};
+            var reads = author[gViewId].reads;
+            reads.forEach(function(read) {
+                var note = gObjectsTable[read.targetId];
+                note.authors.forEach(function(toId) {
+                    if (!author.links[toId]) {
+                        author.links[toId] = 0;
+                    }
+                    author.links[toId]++;
+                });
+            });
+        });
+
+        var graphdata = { nodes: [], links: [] };
+        var authorIds = {};
+        var authorId = 0;
+        gAuthors.forEach(function(author) {
+            var name = author.firstName + '_' + author.lastName;
+            graphdata.nodes[authorId] = { 'name': name, 'group': '1' };
+            authorIds[author._id] = authorId;
+            authorId++;
+        });
+
+        gAuthors.forEach(function(author) {
+            Object.keys(author.links).forEach(function(toId) {
+                var from = authorIds[author._id];
+                var to = authorIds[toId];
+                var value = author.links[toId];
+                graphdata.links.push({ source: from, target: to, weight: value });
+            });
+        });
+
+        graphinit(graphdata);
+    }
+
+    function graphinit(json) {
+
+        var width = 960,
+            height = 500
+
+        var svg = d3.select("#graph").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        var force = d3.layout.force()
+            .gravity(0.05)
+            .distance(100)
+            .charge(-100)
+            .size([width, height]);
+
+        force
+            .nodes(json.nodes)
+            .links(json.links)
+            .start();
+
+        var link = svg.selectAll(".link")
+            .data(json.links)
+            .enter().append("line")
+            .attr("class", "link")
+            .style("stroke-width", function(d) { return Math.sqrt(d.weight); });
+
+        var node = svg.selectAll(".node")
+            .data(json.nodes)
+            .enter().append("g")
+            .attr("class", "node")
+            .call(force.drag);
+
+        node.append("circle")
+            //            .attr("xlink:href", "https://github.com/favicon.ico")
+            .attr("r", 7)
+            .attr("fill", "gray");
+        //            .attr("x", -8)
+        //            .attr("y", -8)
+
+        node.append("text")
+            .attr("dx", 12)
+            .attr("dy", ".35em")
+            .text(function(d) { return d.name });
+
+        force.on("tick", function() {
+            link.attr("x1", function(d) { return d.source.x; })
+                .attr("y1", function(d) { return d.source.y; })
+                .attr("x2", function(d) { return d.target.x; })
+                .attr("y2", function(d) { return d.target.y; });
+
+            node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+        });
     }
     </script>
 </head>
@@ -366,7 +541,7 @@
     <ul>
         <li>serverURL:
             <!--            <input id="serverURL" type="textfield" value="http://localhost:9000/">-->
-            <input id="serverURL" type="textfield" value="https://kf6.ikit.org/">
+            <input id="serverURL" type="textfield" value="http://kf.si.aoyama.ac.jp/">
         </li>
         <li>user:
             <input id="uname" type="textfield" value="yoshiaki.matsuzawa@gmail.com">
@@ -392,6 +567,20 @@
     </table>
     <br>
     <div style="width: 80%;" id="chart-line-hitsperday">
+    </div>
+    <div style="clear:both"></div>
+    from:
+    <label id="fromCurrent"></label> to:
+    <label id="toCurrent"></label>
+    <br>
+    <input id="fromDate" type="text" value="20160301">
+    <input type="button" value="From" onclick="fromPressed()">
+    <br>
+    <input id="toDate" type="text" value="20160302">
+    <input type="button" value="To" onclick="toPressed()">
+    <hr>
+    <div id="graph">
+        <input type="button" value="Create Graph" onclick="openGraph()">
     </div>
 </body>
 
