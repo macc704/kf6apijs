@@ -38,7 +38,7 @@
                 var li = '';
                 li += '<li>';
                 li += each._community.title;
-                li += '<input type="button" value="get" onclick="communityPressed(\'' + each.communityId + '\')">';
+                li += '<input type="button" value="set" onclick="communityPressed(\'' + each.communityId + '\')">';
                 li += '</li>';
                 $('#communities').append(li);
             });
@@ -50,6 +50,7 @@
     function viewPressed(viewId) {
         gViewId = viewId;
         var view = gViewsTable[viewId];
+        $('#viewname').html(view.title);
         var objects = view.data.objects;
 
         //initialize counter
@@ -68,6 +69,7 @@
             object.records.forEach(function(record) {
                 if (object.type === 'Note') {
                     var counter = gAuthorsTable[record.authorId][viewId];
+                    console.log(record.type);
                     if (record.type === 'read') {
                         counter.reads.push(record);
                     } else if (record.type === 'modified') {
@@ -104,7 +106,6 @@
         });
 
         gAuthors.forEach(function(author) {
-
             var counter = author[viewId];
             var readinglist = {};
             counter.reads.forEach(function(read) {
@@ -123,9 +124,11 @@
             counter.modifycount = Object.keys(modifylist).length;
         });
 
+        var authors = getFilteredAuthors();
+
         //make table
-        $('#notes').html('<tr><th>Title</th><th># of Notes</th><th># of Drawings</th><th># of reads</th><th># of readnotes</th><th>% of readings</th><th># of edit</th><th># of editnotes</th></tr>');
-        gAuthors.forEach(function(author) {
+        $('#notes').html('<tr><th>Title</th><th># Notes</th><th># Drawings</th><th># reads</th><th># notes read</th><th>% of readings</th><th>---</th><th>---</th></tr>');
+        authors.forEach(function(author) {
             var counter = author[viewId];
             var tr = '';
             tr += '<tr>';
@@ -141,6 +144,16 @@
             tr += '</tr>';
             $('#notes').append(tr);
         });
+    }
+
+    function getFilteredAuthors() {
+        var authors = [];
+        gAuthors.forEach(function(author) {
+            if ($('#author_' + author._id).prop('checked')) {
+                authors.push(author);
+            }
+        });
+        return authors;
     }
 
     function setRecords(records) {
@@ -171,6 +184,16 @@
                 tr += '</td>';
                 tr += '</tr>';
                 $('#views').append(tr);
+            });
+
+            $('#authors').html('<tr><th>Checked</th><th>Name</th></tr>');
+            gAuthors.forEach(function(author) {
+                var tr = '';
+                tr += '<tr>';
+                tr += '<td>' + '<input id="author_' + author._id + '" type="checkbox" checked>' + '</td>';
+                tr += '<td>' + author.firstName + ' ' + author.lastName + '</td>';
+                tr += '</tr>';
+                $('#authors').append(tr);
             });
         });
     }
@@ -311,6 +334,11 @@
             } else {
                 d.read = 0;
             }
+            if (d.type === 'modify') {
+                d.modify = 1;
+            } else {
+                d.modify = 0;
+            }
             d.total = 1;
         });
 
@@ -332,12 +360,16 @@
         var readGroup = dateDim.group().reduceSum(function(d) {
             return d.read;
         });
+        // var modifyGroup = dateDim.group().reduceSum(function(d) {
+        //     return d.modify;
+        // });
 
         hitslineChart = dc.barChart('#chart-line-hitsperday');
         hitslineChart
             .width(700).height(200)
             .dimension(dateDim)
             .group(readGroup, 'Read')
+            //.group(modifyGroup, 'Modify')
             //.renderArea(true)//for line chart
             .centerBar(true) //for line chart
             .x(d3.time.scale().domain([minDate, maxDate]))
@@ -398,6 +430,10 @@
         dc.redrawAll();
     }
 
+    function authorUpdatePressed() {
+        dc.redrawAll();
+    }
+
     function toPressed() {
         var text = document.getElementById('toDate').value;
         var parser = d3.time.format("%Y%m%d").parse;
@@ -444,7 +480,8 @@
     }
 
     function openGraph() {
-        gAuthors.forEach(function(author) {
+        var authors = getFilteredAuthors();
+        authors.forEach(function(author) {
             author.links = {};
             var reads = author[gViewId].reads;
             reads.forEach(function(read) {
@@ -461,17 +498,18 @@
         var graphdata = { nodes: [], links: [] };
         var authorIds = {};
         var authorId = 0;
-        gAuthors.forEach(function(author) {
+        authors.forEach(function(author) {
             var name = author.firstName + '_' + author.lastName;
             graphdata.nodes[authorId] = { 'name': name, 'group': '1' };
             authorIds[author._id] = authorId;
             authorId++;
         });
 
-        gAuthors.forEach(function(author) {
+        authors.forEach(function(author) {
             Object.keys(author.links).forEach(function(toId) {
-                var from = authorIds[author._id];
                 var to = authorIds[toId];
+                if (!to) { return; } //filtered author           	
+                var from = authorIds[author._id];
                 var value = author.links[toId];
                 graphdata.links.push({ source: from, target: to, weight: value });
             });
@@ -558,18 +596,25 @@
     <ul id="communities">
     </ul>
     <!-- notes -->
-    <h1>views:</h1>
-    <table border="1" id="views">
-    </table>
-    <!-- notes -->
-    <h1>notes:</h1>
-    <table border="1" id="notes">
-    </table>
-    <br>
+    <div style="float:left; width: 40%;">
+        <h1>views:</h1>
+        <table border="1" id="views">
+        </table>
+    </div>
+    <div style="float:left; width: 40%;">
+        <h1>authors:</h1>
+        <table border="1" id="authors">
+        </table>
+        <br>
+        <input type="button" value="Author Update" onclick="authorUpdatePressed()">
+    </div>
+    <div style="clear:both"></div>
+
+    <h1>Timeline:</h1>
     <div style="width: 80%;" id="chart-line-hitsperday">
     </div>
     <div style="clear:both"></div>
-    from:
+    <br> from:
     <label id="fromCurrent"></label> to:
     <label id="toCurrent"></label>
     <br>
@@ -578,9 +623,14 @@
     <br>
     <input id="toDate" type="text" value="20160302">
     <input type="button" value="To" onclick="toPressed()">
+    <!-- notes -->
+    <h1>Basic Statistics: <span id="viewname"></span></h1>
+    <table border="1" id="notes">
+    </table>
     <hr>
+    <h1>Graph:</h1>
     <div id="graph">
-        <input type="button" value="Create Graph" onclick="openGraph()">
+        <input type="button" value="Create Graph" onclick="openGraph()">(Press while Basic Statistics are shown)
     </div>
 </body>
 
