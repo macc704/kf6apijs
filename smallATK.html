@@ -38,150 +38,22 @@
                 var li = '';
                 li += '<li>';
                 li += each._community.title;
-                li += '<input type="button" value="set" onclick="communityPressed(\'' + each.communityId + '\')">';
+                li += '<input type="button" value="select" onclick="communityPressed(\'' + each.communityId + '\')">';
                 li += '</li>';
                 $('#communities').append(li);
             });
         });
     }
 
-    var gViewId;
-
-    function viewPressed(viewId) {
-        gViewId = viewId;
-        var view = gViewsTable[viewId];
-        $('#viewname').html(view.title);
-        var objects = view.data.objects;
-
-        //initialize counter
-        gAuthors.forEach(function(author) {
-            var counter = {};
-            counter.notes = [];
-            counter.drawings = [];
-            counter.others = [];
-            counter.reads = [];
-            counter.modifies = [];
-            author[viewId] = counter;
-        });
-
-        //count
-        objects.forEach(function(object) {
-            object.records.forEach(function(record) {
-                if (object.type === 'Note') {
-                    var counter = gAuthorsTable[record.authorId][viewId];
-                    console.log(record.type);
-                    if (record.type === 'read') {
-                        counter.reads.push(record);
-                    } else if (record.type === 'modified') {
-                        counter.modifies.push(record);
-                    }
-                    // object.authors.forEach(function(authorId) {
-                    //     var counter = gAuthorsTable[authorId][viewId];
-                    //     if (record.type === 'read') {
-                    //         counter.reads.push(record);
-                    //     } else if (record.type === 'modified') {
-                    //         counter.modifies.push(record);
-                    //     }
-                    // });
-                }
-            });
-            object.authors.forEach(function(authorId) {
-                var counter = gAuthorsTable[authorId][viewId];
-                if (object.type === 'Note') {
-                    counter.notes.push(object);
-                } else if (object.type === 'Drawing') {
-                    counter.drawings.push(object);
-                } else {
-                    counter.others.push(object);
-                }
-            });
-        });
-
-        //calc % of note read
-        var numOfNotes = 0;
-        objects.forEach(function(object) {
-            if (object.type === 'Note') {
-                numOfNotes++;
-            }
-        });
-
-        gAuthors.forEach(function(author) {
-            var counter = author[viewId];
-            var readinglist = {};
-            counter.reads.forEach(function(read) {
-                readinglist[read.targetId] = 1;
-            });
-            counter.readcount = Object.keys(readinglist).length;
-            counter.percentOfReading = Math.round((counter.readcount / numOfNotes) * 10000) / 100;
-        });
-
-        gAuthors.forEach(function(author) {
-            var counter = author[viewId];
-            var modifylist = {};
-            counter.modifies.forEach(function(modify) {
-                modifylist[modify.targetId] = 1;
-            });
-            counter.modifycount = Object.keys(modifylist).length;
-        });
-
-        var authors = getFilteredAuthors();
-
-        //make table
-        $('#notes').html('<tr><th>Title</th><th># Notes</th><th># Drawings</th><th># reads</th><th># notes read</th><th>% of readings</th><th>---</th><th>---</th></tr>');
-        authors.forEach(function(author) {
-            var counter = author[viewId];
-            var tr = '';
-            tr += '<tr>';
-            tr += '<td>' + author.firstName + ' ' + author.lastName + '</td>';
-            tr += '<td>' + counter.notes.length + '</td>';
-            tr += '<td>' + counter.drawings.length + '</td>';
-            //tr += '<td>' + counter.others.length + '</td>';
-            tr += '<td>' + counter.reads.length + '</td>';
-            tr += '<td>' + counter.readcount + '</td>';
-            tr += '<td>' + counter.percentOfReading + '</td>';
-            tr += '<td>' + counter.modifies.length + '</td>';
-            tr += '<td>' + counter.modifycount + '</td>';
-            tr += '</tr>';
-            $('#notes').append(tr);
-        });
-    }
-
-    function getFilteredAuthors() {
-        var authors = [];
-        gAuthors.forEach(function(author) {
-            if ($('#author_' + author._id).prop('checked')) {
-                authors.push(author);
-            }
-        });
-        return authors;
-    }
-
-    function setRecords(records) {
-        gObjects.forEach(function(object) {
-            object.records = [];
-        });
-
-        records.forEach(function(record) {
-            var object = gObjectsTable[record.targetId];
-            if (!object) {
-                //console.error('object not found in records. id=' + record.targetId)
-                return;
-            }
-            object.records.push(record);
-        });
-    }
-
     function communityPressed(communityId) {
         initialize(communityId, function() {
-            $('#views').html('<tr><th>Title</th><th>#ofNotes</th><th></th></tr>');
+            $('#views').html('<tr><th>Checked</th><th>Title</th><th>#ofNotes</th></tr>');
             gViews.forEach(function(view) {
                 var tr = '';
                 tr += '<tr>';
+                tr += '<td>' + '<input id="view_' + view._id + '" type="checkbox">' + '</td>';
                 tr += '<td>' + view.title + '</td>';
                 tr += '<td>' + view.data.numOfNotes + '</td>';
-                tr += '<td>';
-                tr += '<input type="button" value="get" onclick="viewPressed(\'' + view._id + '\')">';
-                tr += '</td>';
                 tr += '</tr>';
                 $('#views').append(tr);
             });
@@ -198,6 +70,8 @@
         });
     }
 
+    // initialize a community
+
     function initialize(communityId, handler) {
         kf6.setCommunity(communityId);
         loadAuthors(function() {
@@ -213,13 +87,16 @@
         });
     }
 
-    var gViews;
-    var gViewsTable = {};
+    var gAuthors;
+    var gAuthorsTable = {};
 
-    function loadViews(handler) {
-        kf6.getViews(function(data) {
-            gViews = data;
-            initViews(handler);
+    function loadAuthors(handler) {
+        kf6.getAuthors(function(authors) {
+            gAuthors = authors;
+            authors.forEach(function(author) {
+                gAuthorsTable[author._id] = author;
+            });
+            handler();
         });
     }
 
@@ -240,19 +117,6 @@
         });
     }
 
-    var gAuthors;
-    var gAuthorsTable = {};
-
-    function loadAuthors(handler) {
-        kf6.getAuthors(function(authors) {
-            gAuthors = authors;
-            authors.forEach(function(author) {
-                gAuthorsTable[author._id] = author;
-            });
-            handler();
-        });
-    }
-
     var gRecords;
 
     function loadRecords(handler) {
@@ -260,6 +124,31 @@
         kf6.getRecords(query, function(records) {
             gRecords = records;
             handler();
+        });
+    }
+
+    function setRecords(records) {
+        gObjects.forEach(function(object) {
+            object.records = [];
+        });
+
+        records.forEach(function(record) {
+            var object = gObjectsTable[record.targetId];
+            if (!object) {
+                //console.error('object not found in records. id=' + record.targetId)
+                return;
+            }
+            object.records.push(record);
+        });
+    }
+
+    var gViews;
+    var gViewsTable = {};
+
+    function loadViews(handler) {
+        kf6.getViews(function(data) {
+            gViews = data;
+            initViews(handler);
         });
     }
 
@@ -321,6 +210,145 @@
             handler();
         });
     }
+
+    // Selected Views and Authors
+
+    function getSelectedAuthors() {
+        var authors = [];
+        gAuthors.forEach(function(author) {
+            if ($('#author_' + author._id).prop('checked')) {
+                authors.push(author);
+            }
+        });
+        return authors;
+    }
+
+    function getSelectedViews() {
+        var views = [];
+        gViews.forEach(function(view) {
+            if ($('#view_' + view._id).prop('checked')) {
+                views.push(view);
+            }
+        });
+        return views;
+    }
+
+    function hasSelectedViews(){
+        return getSelectedViews().length > 0;
+    }
+
+    //  Show data algorithm
+    function updateStatistics() {
+        var views = getSelectedViews();
+        if (!hasSelectedViews()) {
+            window.alert('No view selected.');
+            return;
+        }
+
+        var viewname = views[0].title;
+        for (var i = 1; i < views.length; i++) {
+            viewname += ', ' + views[i].title;
+        }
+        $('#viewname').html(viewname);
+
+        //initialize counter
+        gAuthors.forEach(function(author) {
+            var counter = {};
+            counter.notes = [];
+            counter.drawings = [];
+            counter.others = [];
+            counter.reads = [];
+            counter.modifies = [];
+            author.counter = counter;
+        });
+
+        //select objects
+        var objectsTable = {}
+        views.forEach(function(view) {
+            var objectsInView = view.data.objects;
+            objectsInView.forEach(function(object) {
+                objectsTable[object._id] = object;
+            })
+        });
+        var objects = [];
+        Object.keys(objectsTable).forEach(function(key) {
+            objects.push(objectsTable[key]);
+        });
+
+        //count
+        objects.forEach(function(object) {
+            object.records.forEach(function(record) {
+                if (object.type === 'Note') {
+                    var counter = gAuthorsTable[record.authorId].counter;
+                    if (record.type === 'read') {
+                        counter.reads.push(record);
+                    } else if (record.type === 'modified') {
+                        counter.modifies.push(record);
+                    }
+                }
+            });
+            object.authors.forEach(function(authorId) {
+                var counter = gAuthorsTable[authorId].counter;
+                if (object.type === 'Note') {
+                    counter.notes.push(object);
+                } else if (object.type === 'Drawing') {
+                    counter.drawings.push(object);
+                } else {
+                    counter.others.push(object);
+                }
+            });
+        });
+
+        //calc % of note read
+        var numOfNotes = 0;
+        objects.forEach(function(object) {
+            if (object.type === 'Note') {
+                numOfNotes++;
+            }
+        });
+
+        var authors = getSelectedAuthors();
+
+        authors.forEach(function(author) {
+            var counter = author.counter;
+            var readinglist = {};
+            counter.reads.forEach(function(read) {
+                readinglist[read.targetId] = 1;
+            });
+            counter.readcount = Object.keys(readinglist).length;
+            counter.percentOfReading = Math.round((counter.readcount / numOfNotes) * 10000) / 100;
+        });
+
+        authors.forEach(function(author) {
+            var counter = author.counter;
+            var modifylist = {};
+            counter.modifies.forEach(function(modify) {
+                modifylist[modify.targetId] = 1;
+            });
+            counter.modifycount = Object.keys(modifylist).length;
+        });
+
+        //make table
+        $('#notes').html('<tr><th>Title</th><th># Notes</th><th># Drawings</th><th># reads</th><th># notes read</th><th>% of readings</th><th>---</th><th>---</th></tr>');
+        authors.forEach(function(author) {
+            var counter = author.counter;
+            var tr = '';
+            tr += '<tr>';
+            tr += '<td>' + author.firstName + ' ' + author.lastName + '</td>';
+            tr += '<td>' + counter.notes.length + '</td>';
+            tr += '<td>' + counter.drawings.length + '</td>';
+            //tr += '<td>' + counter.others.length + '</td>';
+            tr += '<td>' + counter.reads.length + '</td>';
+            tr += '<td>' + counter.readcount + '</td>';
+            tr += '<td>' + counter.percentOfReading + '</td>';
+            tr += '<td>' + counter.modifies.length + '</td>';
+            tr += '<td>' + counter.modifycount + '</td>';
+            tr += '</tr>';
+            $('#notes').append(tr);
+        });
+    }
+
+    // setting of dc.js
 
     var hitslineChart;
     var dateDim;
@@ -390,16 +418,16 @@
         dummy._doRedraw = function() {
             var filtered = typeDim.filter('read').top(Infinity);
             setRecords(filtered);
-            if (gViewId) {
-                viewPressed(gViewId);
+            if(hasSelectedViews()){
+                updateStatistics();
             }
             showRange();
         };
         dummy._doRender = function() {
             var filtered = typeDim.filter('read').top(Infinity);
             setRecords(filtered);
-            if (gViewId) {
-                viewPressed(gViewId);
+            if(hasSelectedViews()){
+                updateStatistics();
             }
             showRange();
         };
@@ -427,10 +455,6 @@
         }
         hitslineChart.filter(null);
         hitslineChart.filter(dc.filters.RangedFilter(d3time, to));
-        dc.redrawAll();
-    }
-
-    function authorUpdatePressed() {
         dc.redrawAll();
     }
 
@@ -479,11 +503,13 @@
         document.getElementById('toCurrent').innerHTML = range.to;
     }
 
+    // for graph
+
     function openGraph() {
-        var authors = getFilteredAuthors();
+        var authors = getSelectedAuthors();
         authors.forEach(function(author) {
             author.links = {};
-            var reads = author[gViewId].reads;
+            var reads = author.counter.reads;
             reads.forEach(function(read) {
                 var note = gObjectsTable[read.targetId];
                 note.authors.forEach(function(toId) {
@@ -508,7 +534,7 @@
         authors.forEach(function(author) {
             Object.keys(author.links).forEach(function(toId) {
                 var to = authorIds[toId];
-                if (!to) { return; } //filtered author           	
+                if (!to) { return; } //filtered author              
                 var from = authorIds[author._id];
                 var value = author.links[toId];
                 graphdata.links.push({ source: from, target: to, weight: value });
@@ -578,8 +604,8 @@
     <!-- login console -->
     <ul>
         <li>serverURL:
-            <!--            <input id="serverURL" type="textfield" value="http://localhost:9000/">-->
-            <input id="serverURL" type="textfield" value="http://kf.si.aoyama.ac.jp/">
+            <input id="serverURL" type="textfield" value="http://localhost:9000/">
+            <!-- <input id="serverURL" type="textfield" value="https://kf6.ikit.org/">-->
         </li>
         <li>user:
             <input id="uname" type="textfield" value="yoshiaki.matsuzawa@gmail.com">
@@ -596,20 +622,23 @@
     <ul id="communities">
     </ul>
     <!-- notes -->
-    <div style="float:left; width: 40%;">
+    <!--<div style="float:left; width: 40%;">-->
+    <div>
         <h1>views:</h1>
         <table border="1" id="views">
         </table>
     </div>
-    <div style="float:left; width: 40%;">
+    <!--<div style="float:left; width: 40%;">-->
+    <div>
         <h1>authors:</h1>
         <table border="1" id="authors">
         </table>
         <br>
-        <input type="button" value="Author Update" onclick="authorUpdatePressed()">
+    </div>
+    <div>
+        <input type="button" value="Update Statistics" onclick="updateStatistics()">
     </div>
     <div style="clear:both"></div>
-
     <h1>Timeline:</h1>
     <div style="width: 80%;" id="chart-line-hitsperday">
     </div>
