@@ -58,12 +58,14 @@
                 $('#views').append(tr);
             });
 
-            $('#authors').html('<tr><th>Checked</th><th>Name</th></tr>');
+            $('#authors').html('<tr><th>Checked</th><th>Name</th><th>Nickname</th></tr>');
             gAuthors.forEach(function(author) {
+                author.name = author.firstName;
                 var tr = '';
                 tr += '<tr>';
                 tr += '<td>' + '<input id="author_' + author._id + '" type="checkbox" checked>' + '</td>';
                 tr += '<td>' + author.firstName + ' ' + author.lastName + '</td>';
+                tr += '<td>' + '<input id="authorname_' + author._id + '" type="textfield" value="' + author.name + '">' + '</td>';
                 tr += '</tr>';
                 $('#authors').append(tr);
             });
@@ -216,6 +218,7 @@
     function getSelectedAuthors() {
         var authors = [];
         gAuthors.forEach(function(author) {
+            author.name = $('#authorname_' + author._id).prop('value');
             if ($('#author_' + author._id).prop('checked')) {
                 authors.push(author);
             }
@@ -233,7 +236,7 @@
         return views;
     }
 
-    function hasSelectedViews(){
+    function hasSelectedViews() {
         return getSelectedViews().length > 0;
     }
 
@@ -334,7 +337,7 @@
             var counter = author.counter;
             var tr = '';
             tr += '<tr>';
-            tr += '<td>' + author.firstName + ' ' + author.lastName + '</td>';
+            tr += '<td>' + author.name + '</td>';
             tr += '<td>' + counter.notes.length + '</td>';
             tr += '<td>' + counter.drawings.length + '</td>';
             //tr += '<td>' + counter.others.length + '</td>';
@@ -418,7 +421,7 @@
         dummy._doRedraw = function() {
             var filtered = typeDim.filter('read').top(Infinity);
             setRecords(filtered);
-            if(hasSelectedViews()){
+            if (hasSelectedViews()) {
                 updateStatistics();
             }
             showRange();
@@ -426,7 +429,7 @@
         dummy._doRender = function() {
             var filtered = typeDim.filter('read').top(Infinity);
             setRecords(filtered);
-            if(hasSelectedViews()){
+            if (hasSelectedViews()) {
                 updateStatistics();
             }
             showRange();
@@ -503,9 +506,18 @@
         document.getElementById('toCurrent').innerHTML = range.to;
     }
 
+    // for open window
+    function openNewWindow() {
+        window.open('result.html');
+    }
+
+    function notify(childWindow) {
+        openGraph(childWindow);
+    }
+
     // for graph
 
-    function openGraph() {
+    function openGraph(childWin) {
         var authors = getSelectedAuthors();
         authors.forEach(function(author) {
             author.links = {};
@@ -525,7 +537,7 @@
         var authorIds = {};
         var authorId = 0;
         authors.forEach(function(author) {
-            var name = author.firstName + '_' + author.lastName;
+            var name = author.name;
             graphdata.nodes[authorId] = { 'name': name, 'group': '1' };
             authorIds[author._id] = authorId;
             authorId++;
@@ -541,7 +553,11 @@
             });
         });
 
-        graphinit(graphdata);
+        if (childWin) {
+            childWin.graphinit(graphdata);
+        } else {
+            graphinit(graphdata);
+        }
     }
 
     function graphinit(json) {
@@ -597,6 +613,30 @@
             node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
         });
     }
+
+    function toLocal() {
+        $('#serverURL').attr('value', 'http://localhost:9000/');
+    }
+
+    // localstorage
+    function loadSetting() {
+        gAuthors.forEach(function(author) {
+            $('#author_' + author._id).prop('checked', false);
+        });
+        var authors = JSON.parse(localStorage.getItem('authors'));
+        authors.forEach(function(author) {
+            $('#author_' + author._id).prop('checked', author.checked);
+            $('#authorname_' + author._id).prop('value', author.name);
+        });
+    }
+
+    function saveSetting() {
+        gAuthors.forEach(function(author) {
+            author.name = $('#authorname_' + author._id).prop('value');
+            author.checked = $('#author_' + author._id).prop('checked');
+        });
+        localStorage.setItem('authors', JSON.stringify(gAuthors));
+    }
     </script>
 </head>
 
@@ -604,8 +644,9 @@
     <!-- login console -->
     <ul>
         <li>serverURL:
-            <input id="serverURL" type="textfield" value="http://localhost:9000/">
-            <!-- <input id="serverURL" type="textfield" value="https://kf6.ikit.org/">-->
+            <!-- <input id="serverURL" type="textfield" value="http://localhost:9000/"> -->
+            <input id="serverURL" type="textfield" value="https://kf6.ikit.org/">
+            <input type="button" value="Local" onclick="toLocal()">
         </li>
         <li>user:
             <input id="uname" type="textfield" value="yoshiaki.matsuzawa@gmail.com">
@@ -634,6 +675,8 @@
         <table border="1" id="authors">
         </table>
         <br>
+        <input type="button" value="Save" onclick="saveSetting()">
+        <input type="button" value="Load" onclick="loadSetting()">
     </div>
     <div>
         <input type="button" value="Update Statistics" onclick="updateStatistics()">
@@ -660,6 +703,7 @@
     <h1>Graph:</h1>
     <div id="graph">
         <input type="button" value="Create Graph" onclick="openGraph()">(Press while Basic Statistics are shown)
+        <input type="button" value="Create Graph" onclick="openNewWindow()">
     </div>
 </body>
 
