@@ -332,7 +332,7 @@
         });
 
         //make table
-        $('#notes').html('<tr><th>Title</th><th># Notes</th><th># Drawings</th><th># reads</th><th># notes read</th><th>% of readings</th><th>---</th><th>---</th></tr>');
+        $('#notes').html('<tr><th>Title</th><th># Notes</th><th># Drawings</th><th># reads</th><th># notes read</th><th>% of readings</th><th># modifies</th><th># notes modified</th></tr>');
         authors.forEach(function(author) {
             var counter = author.counter;
             var tr = '';
@@ -385,8 +385,6 @@
         var minDate = dateDim.bottom(1)[0].date;
         var maxDate = dateDim.top(1)[0].date;
 
-        //console.log(minDate);
-        //console.log(maxDate);
 
         var readGroup = dateDim.group().reduceSum(function(d) {
             return d.read;
@@ -419,7 +417,7 @@
             .group(hits)
             .innerRadius(30);
         dummy._doRedraw = function() {
-            var filtered = typeDim.filter('read').top(Infinity);
+            var filtered = typeDim.filter().top(Infinity);
             setRecords(filtered);
             if (hasSelectedViews()) {
                 updateStatistics();
@@ -427,7 +425,7 @@
             showRange();
         };
         dummy._doRender = function() {
-            var filtered = typeDim.filter('read').top(Infinity);
+            var filtered = typeDim.filter().top(Infinity);
             setRecords(filtered);
             if (hasSelectedViews()) {
                 updateStatistics();
