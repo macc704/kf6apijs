@@ -3,14 +3,14 @@
 <head>
     <link rel="stylesheet" type="text/css" href="bower_components/dcjs/dc.css">
     <style>
-    .link {
-        stroke: #ccc;
-    }
+        .link {
+            stroke: #ccc;
+        }
 
-    .node text {
-        pointer-events: none;
-        font: 10px sans-serif;
-    }
+        .node text {
+            pointer-events: none;
+            font: 10px sans-serif;
+        }
     </style>
     <script src="jquery.js"></script>
     <script src="kf6api.js"></script>
@@ -18,37 +18,40 @@
     <script src="bower_components/d3/d3.min.js"></script>
     <script src="bower_components/dcjs/dc.min.js"></script>
     <script>
-    function loginPressed() {
-        var serverURL = $('#serverURL').val();
-        kf6.setBaseURL(serverURL);
+        function loginPressed() {
+            var serverURL = $('#serverURL').val();
+            kf6.setBaseURL(serverURL);
 
-        var uname = $('#uname').val();
-        var password = $('#password').val();
-        kf6.login(uname, password, function() {
-            getCommunities();
-        }, function(data) {
-            alert('login failed: ' + data.status);
-        });
-    }
-
-    function getCommunities() {
-        kf6.getCommunities(function(data) {
-            $('#communities').html('');
-            data.forEach(function(each) {
-                var li = '';
-                li += '<li>';
-                li += each._community.title;
-                li += '<input type="button" value="select" onclick="communityPressed(\'' + each.communityId + '\')">';
-                li += '</li>';
-                $('#communities').append(li);
+            var uname = $('#uname').val();
+            var password = $('#password').val();
+            kf6.login(uname, password, function () {
+                getCommunities();
+            }, function (data) {
+                alert('login failed: ' + data.status);
             });
-        });
-    }
+        }
 
-    function communityPressed(communityId) {
-        initialize(communityId, function() {
+        function getCommunities() {
+            kf6.getCommunities(function (data) {
+                $('#communities').html('');
+                data.forEach(function (each) {
+                    var li = '';
+                    li += '<li>';
+                    li += each._community.title;
+                    li += '<input type="button" value="select" onclick="communityPressed(\'' + each.communityId + '\')">';
+                    li += '</li>';
+                    $('#communities').append(li);
+                });
+            });
+        }
+
+        function communityPressed(communityId) {
+            initialize(communityId, initializeDOMforCommunity);
+        }
+
+        function initializeDOMforCommunity() {
             $('#views').html('<tr><th>Checked</th><th>Title</th><th>#ofNotes</th></tr>');
-            gViews.forEach(function(view) {
+            gViews.forEach(function (view) {
                 var tr = '';
                 tr += '<tr>';
                 tr += '<td>' + '<input id="view_' + view._id + '" type="checkbox">' + '</td>';
@@ -59,7 +62,7 @@
             });
 
             $('#authors').html('<tr><th>Checked</th><th>Name</th><th>Nickname</th></tr>');
-            gAuthors.forEach(function(author) {
+            gAuthors.forEach(function (author) {
                 author.name = author.firstName;
                 var tr = '';
                 tr += '<tr>';
@@ -69,572 +72,612 @@
                 tr += '</tr>';
                 $('#authors').append(tr);
             });
-        });
-    }
+        }
 
-    // initialize a community
+        // initialize a community
 
-    function initialize(communityId, handler) {
-        kf6.setCommunity(communityId);
-        loadAuthors(function() {
-            loadObjects(function() {
-                loadRecords(function() {
-                    loadViews(function() {
-                        setRecords(gRecords);
-                        initdc(gRecords);
-                        handler();
+        function initialize(communityId, handler) {
+            kf6.setCommunity(communityId);
+            loadAuthors(function () {
+                loadObjects(function () {
+                    loadRecords(function () {
+                        loadViews(function () {
+                            setRecords(gRecords);
+                            initdc(gRecords);
+                            handler();
+                        });
                     });
                 });
             });
-        });
-    }
+        }
 
-    var gAuthors;
-    var gAuthorsTable = {};
+        var gAuthors;
+        var gAuthorsTable = {};
 
-    function loadAuthors(handler) {
-        kf6.getAuthors(function(authors) {
-            gAuthors = authors;
-            authors.forEach(function(author) {
-                gAuthorsTable[author._id] = author;
+        function loadAuthors(handler) {
+            kf6.getAuthors(function (authors) {
+                gAuthors = authors;
+                authors.forEach(function (author) {
+                    gAuthorsTable[author._id] = author;
+                });
+                handler();
             });
-            handler();
-        });
-    }
+        }
 
-    var gObjects;
-    var gObjectsTable = {};
+        var gObjects;
+        var gObjectsTable = {};
 
-    function loadObjects(handler) {
-        var query = {
-            pagesize: 10000,
-            searchMode: 'title'
-        };
-        kf6.getObjects(query, function(objects) {
-            gObjects = objects;
-            objects.forEach(function(object) {
-                gObjectsTable[object._id] = object;
+        function loadObjects(handler) {
+            var query = {
+                pagesize: 10000,
+                searchMode: 'title'
+            };
+            kf6.getObjects(query, function (objects) {
+                gObjects = objects;
+                objects.forEach(function (object) {
+                    gObjectsTable[object._id] = object;
+                });
+                handler();
             });
-            handler();
-        });
-    }
+        }
 
-    var gRecords;
+        var gRecords;
 
-    function loadRecords(handler) {
-        var query = {};
-        kf6.getRecords(query, function(records) {
-            gRecords = records;
-            handler();
-        });
-    }
+        function loadRecords(handler) {
+            var query = {};
+            kf6.getRecords(query, function (records) {
+                gRecords = records;
+                handler();
+            });
+        }
 
-    function setRecords(records) {
-        gObjects.forEach(function(object) {
-            object.records = [];
-        });
+        function setRecords(records) {
+            gObjects.forEach(function (object) {
+                object.records = [];
+            });
 
-        records.forEach(function(record) {
-            var object = gObjectsTable[record.targetId];
-            if (!object) {
-                //console.error('object not found in records. id=' + record.targetId)
+            records.forEach(function (record) {
+                var object = gObjectsTable[record.targetId];
+                if (!object) {
+                    //console.error('object not found in records. id=' + record.targetId)
+                    return;
+                }
+                object.records.push(record);
+            });
+        }
+
+        var gViews;
+        var gViewsTable = {};
+
+        function loadViews(handler) {
+            kf6.getViews(function (data) {
+                gViews = data;
+                initViews(handler);
+            });
+        }
+
+        function initViews(handler) {
+            gViews.forEach(function (view) {
+                gViewsTable[view._id] = view;
+                tasks.push(function (shandler) {
+                    initView(view, shandler);
+                });
+            });
+            doTask(function () {
+                handler();
+            });
+        }
+
+        var tasks = [];
+
+        function doTask(handler) {
+            var len = tasks.length;
+            if (len <= 0) {
+                handler();
                 return;
             }
-            object.records.push(record);
-        });
-    }
-
-    var gViews;
-    var gViewsTable = {};
-
-    function loadViews(handler) {
-        kf6.getViews(function(data) {
-            gViews = data;
-            initViews(handler);
-        });
-    }
-
-    function initViews(handler) {
-        gViews.forEach(function(view) {
-            gViewsTable[view._id] = view;
-            tasks.push(function(shandler) {
-                initView(view, shandler);
-            });
-        });
-        doTask(function() {
-            handler();
-        });
-    }
-
-    var tasks = [];
-
-    function doTask(handler) {
-        var len = tasks.length;
-        if (len <= 0) {
-            handler();
-            return;
-        }
-        var count = 0;
-        tasks.forEach(function(task) {
-            task(function() {
-                count = count + 1;
-                if (len <= count) {
-                    handler();
-                }
-            });
-        })
-        tasks = [];
-    }
-
-    function initView(view, handler) {
-        kf6.getLinksFrom(view._id, function(links) {
-            view.data = {};
-            view.data.links = links;
-            var objects = [];
-            links.forEach(function(link) {
-                if (link.type === 'contains') {
-                    var object = gObjectsTable[link.to];
-                    if (!object) {
-                        console.info('object not found=' + link.to)
-                        return;
+            var count = 0;
+            tasks.forEach(function (task) {
+                task(function () {
+                    count = count + 1;
+                    if (len <= count) {
+                        handler();
                     }
-                    objects.push(gObjectsTable[link.to]);
+                });
+            })
+            tasks = [];
+        }
+
+        function initView(view, handler) {
+            kf6.getLinksFrom(view._id, function (links) {
+                view.data = {};
+                view.data.links = links;
+                var objects = [];
+                links.forEach(function (link) {
+                    if (link.type === 'contains') {
+                        var object = gObjectsTable[link.to];
+                        if (!object) {
+                            console.info('object not found=' + link.to)
+                            return;
+                        }
+                        objects.push(gObjectsTable[link.to]);
+                    }
+                });
+                var numOfNotes = 0;
+                objects.forEach(function (object) {
+                    if (object.type === 'Note') {
+                        numOfNotes++;
+                    }
+                });
+                view.data.objects = objects;
+                view.data.numOfNotes = numOfNotes;
+                handler();
+            });
+        }
+
+        // Selected Views and Authors
+
+        function getSelectedAuthors() {
+            var authors = [];
+            gAuthors.forEach(function (author) {
+                author.name = $('#authorname_' + author._id).prop('value');
+                if ($('#author_' + author._id).prop('checked')) {
+                    authors.push(author);
                 }
             });
+            return authors;
+        }
+
+        function getSelectedViews() {
+            var views = [];
+            gViews.forEach(function (view) {
+                if ($('#view_' + view._id).prop('checked')) {
+                    views.push(view);
+                }
+            });
+            return views;
+        }
+
+        function hasSelectedViews() {
+            return getSelectedViews().length > 0;
+        }
+
+        //  Show data algorithm
+        function updateStatistics() {
+            var views = getSelectedViews();
+            if (!hasSelectedViews()) {
+                window.alert('No view selected.');
+                return;
+            }
+
+            var viewname = views[0].title;
+            for (var i = 1; i < views.length; i++) {
+                viewname += ', ' + views[i].title;
+            }
+            $('#viewname').html(viewname);
+
+            //initialize counter
+            gAuthors.forEach(function (author) {
+                var counter = {};
+                counter.notes = [];
+                counter.drawings = [];
+                counter.others = [];
+                counter.reads = [];
+                counter.modifies = [];
+                author.counter = counter;
+            });
+
+            //select objects
+            var objectsTable = {}
+            views.forEach(function (view) {
+                var objectsInView = view.data.objects;
+                objectsInView.forEach(function (object) {
+                    objectsTable[object._id] = object;
+                })
+            });
+            var objects = [];
+            Object.keys(objectsTable).forEach(function (key) {
+                objects.push(objectsTable[key]);
+            });
+
+            //count
+            objects.forEach(function (object) {
+                object.records.forEach(function (record) {
+                    if (object.type === 'Note') {
+                        var counter = gAuthorsTable[record.authorId].counter;
+                        if (record.type === 'read') {
+                            counter.reads.push(record);
+                        } else if (record.type === 'modified') {
+                            counter.modifies.push(record);
+                        }
+                    }
+                });
+                object.authors.forEach(function (authorId) {
+                    var counter = gAuthorsTable[authorId].counter;
+                    if (object.type === 'Note') {
+                        counter.notes.push(object);
+                    } else if (object.type === 'Drawing') {
+                        counter.drawings.push(object);
+                    } else {
+                        counter.others.push(object);
+                    }
+                });
+            });
+
+            //calc % of note read
             var numOfNotes = 0;
-            objects.forEach(function(object) {
+            objects.forEach(function (object) {
                 if (object.type === 'Note') {
                     numOfNotes++;
                 }
             });
-            view.data.objects = objects;
-            view.data.numOfNotes = numOfNotes;
-            handler();
-        });
-    }
 
-    // Selected Views and Authors
+            var authors = getSelectedAuthors();
 
-    function getSelectedAuthors() {
-        var authors = [];
-        gAuthors.forEach(function(author) {
-            author.name = $('#authorname_' + author._id).prop('value');
-            if ($('#author_' + author._id).prop('checked')) {
-                authors.push(author);
-            }
-        });
-        return authors;
-    }
-
-    function getSelectedViews() {
-        var views = [];
-        gViews.forEach(function(view) {
-            if ($('#view_' + view._id).prop('checked')) {
-                views.push(view);
-            }
-        });
-        return views;
-    }
-
-    function hasSelectedViews() {
-        return getSelectedViews().length > 0;
-    }
-
-    //  Show data algorithm
-    function updateStatistics() {
-        var views = getSelectedViews();
-        if (!hasSelectedViews()) {
-            window.alert('No view selected.');
-            return;
-        }
-
-        var viewname = views[0].title;
-        for (var i = 1; i < views.length; i++) {
-            viewname += ', ' + views[i].title;
-        }
-        $('#viewname').html(viewname);
-
-        //initialize counter
-        gAuthors.forEach(function(author) {
-            var counter = {};
-            counter.notes = [];
-            counter.drawings = [];
-            counter.others = [];
-            counter.reads = [];
-            counter.modifies = [];
-            author.counter = counter;
-        });
-
-        //select objects
-        var objectsTable = {}
-        views.forEach(function(view) {
-            var objectsInView = view.data.objects;
-            objectsInView.forEach(function(object) {
-                objectsTable[object._id] = object;
-            })
-        });
-        var objects = [];
-        Object.keys(objectsTable).forEach(function(key) {
-            objects.push(objectsTable[key]);
-        });
-
-        //count
-        objects.forEach(function(object) {
-            object.records.forEach(function(record) {
-                if (object.type === 'Note') {
-                    var counter = gAuthorsTable[record.authorId].counter;
-                    if (record.type === 'read') {
-                        counter.reads.push(record);
-                    } else if (record.type === 'modified') {
-                        counter.modifies.push(record);
-                    }
-                }
+            authors.forEach(function (author) {
+                var counter = author.counter;
+                var readinglist = {};
+                counter.reads.forEach(function (read) {
+                    readinglist[read.targetId] = 1;
+                });
+                counter.readcount = Object.keys(readinglist).length;
+                counter.percentOfReading = Math.round((counter.readcount / numOfNotes) * 10000) / 100;
             });
-            object.authors.forEach(function(authorId) {
-                var counter = gAuthorsTable[authorId].counter;
-                if (object.type === 'Note') {
-                    counter.notes.push(object);
-                } else if (object.type === 'Drawing') {
-                    counter.drawings.push(object);
+
+            authors.forEach(function (author) {
+                var counter = author.counter;
+                var modifylist = {};
+                counter.modifies.forEach(function (modify) {
+                    modifylist[modify.targetId] = 1;
+                });
+                counter.modifycount = Object.keys(modifylist).length;
+            });
+
+            //make table
+            $('#notes').html('<tr><th>Title</th><th># Notes</th><th># Drawings</th><th># reads</th><th># notes read</th><th>% of readings</th><th># modifies</th><th># notes modified</th></tr>');
+            authors.forEach(function (author) {
+                var counter = author.counter;
+                var tr = '';
+                tr += '<tr>';
+                tr += '<td>' + author.name + '</td>';
+                tr += '<td>' + counter.notes.length + '</td>';
+                tr += '<td>' + counter.drawings.length + '</td>';
+                //tr += '<td>' + counter.others.length + '</td>';
+                tr += '<td>' + counter.reads.length + '</td>';
+                tr += '<td>' + counter.readcount + '</td>';
+                tr += '<td>' + counter.percentOfReading + '</td>';
+                tr += '<td>' + counter.modifies.length + '</td>';
+                tr += '<td>' + counter.modifycount + '</td>';
+                tr += '</tr>';
+                $('#notes').append(tr);
+            });
+        }
+
+        // setting of dc.js
+
+        var hitslineChart;
+        var dateDim;
+
+        function initdc(data) {
+            var parseDate = d3.time.format("%Y-%m-%dT%H:%M:%S.%LZ").parse;
+            data.forEach(function (d) {
+                d.date = parseDate(d.timestamp);
+                if (d.type === 'read') {
+                    d.read = 1;
                 } else {
-                    counter.others.push(object);
+                    d.read = 0;
                 }
+                if (d.type === 'modify') {
+                    d.modify = 1;
+                } else {
+                    d.modify = 0;
+                }
+                d.total = 1;
             });
-        });
 
-        //calc % of note read
-        var numOfNotes = 0;
-        objects.forEach(function(object) {
-            if (object.type === 'Note') {
-                numOfNotes++;
+            var ndx = crossfilter(data);
+
+            dateDim = ndx.dimension(function (d) {
+                return d.date;
+            });
+            var typeDim = ndx.dimension(function (d) {
+                return d.type;
+            });
+
+            var minDate = dateDim.bottom(1)[0].date;
+            var maxDate = dateDim.top(1)[0].date;
+
+
+            var readGroup = dateDim.group().reduceSum(function (d) {
+                return d.read;
+            });
+            // var modifyGroup = dateDim.group().reduceSum(function(d) {
+            //     return d.modify;
+            // });
+
+            hitslineChart = dc.barChart('#chart-line-hitsperday');
+            hitslineChart
+                .width(700).height(200)
+                .dimension(dateDim)
+                .group(readGroup, 'Read')
+                //.group(modifyGroup, 'Modify')
+                //.renderArea(true)//for line chart
+                .centerBar(true) //for line chart
+                .x(d3.time.scale().domain([minDate, maxDate]))
+                .legend(dc.legend().x(50).y(10).itemHeight(13).gap(5))
+                .yAxisLabel('Hits per day');
+
+
+            // dummy for update
+            var hits = dateDim.group().reduceSum(function (d) {
+                return d.total;
+            });
+            var dummy = dc.pieChart('#dummy');
+            dummy
+                .width(200).height(200)
+                .dimension(dateDim)
+                .group(hits)
+                .innerRadius(30);
+            dummy._doRedraw = function () {
+                var filtered = typeDim.filter().top(Infinity);
+                setRecords(filtered);
+                if (hasSelectedViews()) {
+                    updateStatistics();
+                }
+                showRange();
+            };
+            dummy._doRender = function () {
+                var filtered = typeDim.filter().top(Infinity);
+                setRecords(filtered);
+                if (hasSelectedViews()) {
+                    updateStatistics();
+                }
+                showRange();
+            };
+            dc.renderAll();
+        }
+
+        function fromPressed() {
+            var text = document.getElementById('fromDate').value;
+            var parser = d3.time.format("%Y%m%d").parse;
+            var d3time = parser(text);
+            if (!d3time) {
+                window.alert('invalid dateformat');
+                return;
             }
-        });
+            if (!hitslineChart) {
+                return;
+            }
 
-        var authors = getSelectedAuthors();
-
-        authors.forEach(function(author) {
-            var counter = author.counter;
-            var readinglist = {};
-            counter.reads.forEach(function(read) {
-                readinglist[read.targetId] = 1;
-            });
-            counter.readcount = Object.keys(readinglist).length;
-            counter.percentOfReading = Math.round((counter.readcount / numOfNotes) * 10000) / 100;
-        });
-
-        authors.forEach(function(author) {
-            var counter = author.counter;
-            var modifylist = {};
-            counter.modifies.forEach(function(modify) {
-                modifylist[modify.targetId] = 1;
-            });
-            counter.modifycount = Object.keys(modifylist).length;
-        });
-
-        //make table
-        $('#notes').html('<tr><th>Title</th><th># Notes</th><th># Drawings</th><th># reads</th><th># notes read</th><th>% of readings</th><th># modifies</th><th># notes modified</th></tr>');
-        authors.forEach(function(author) {
-            var counter = author.counter;
-            var tr = '';
-            tr += '<tr>';
-            tr += '<td>' + author.name + '</td>';
-            tr += '<td>' + counter.notes.length + '</td>';
-            tr += '<td>' + counter.drawings.length + '</td>';
-            //tr += '<td>' + counter.others.length + '</td>';
-            tr += '<td>' + counter.reads.length + '</td>';
-            tr += '<td>' + counter.readcount + '</td>';
-            tr += '<td>' + counter.percentOfReading + '</td>';
-            tr += '<td>' + counter.modifies.length + '</td>';
-            tr += '<td>' + counter.modifycount + '</td>';
-            tr += '</tr>';
-            $('#notes').append(tr);
-        });
-    }
-
-    // setting of dc.js
-
-    var hitslineChart;
-    var dateDim;
-
-    function initdc(data) {
-        var parseDate = d3.time.format("%Y-%m-%dT%H:%M:%S.%LZ").parse;
-        data.forEach(function(d) {
-            d.date = parseDate(d.timestamp);
-            if (d.type === 'read') {
-                d.read = 1;
+            var to;
+            var range = getRange();
+            if (range) {
+                to = range.to;
             } else {
-                d.read = 0;
+                to = dateDim.top(1)[0].date;
             }
-            if (d.type === 'modify') {
-                d.modify = 1;
+            hitslineChart.filter(null);
+            hitslineChart.filter(dc.filters.RangedFilter(d3time, to));
+            dc.redrawAll();
+        }
+
+        function toPressed() {
+            var text = document.getElementById('toDate').value;
+            var parser = d3.time.format("%Y%m%d").parse;
+            var d3time = parser(text);
+            if (!d3time) {
+                window.alert('invalid dateformat');
+                return;
+            }
+
+            if (!hitslineChart) {
+                return;
+            }
+
+            var from;
+            var range = getRange();
+            if (range) {
+                from = range.from;
             } else {
-                d.modify = 0;
+                from = dateDim.bottom(1)[0].date;
             }
-            d.total = 1;
-        });
+            hitslineChart.filter(null);
+            hitslineChart.filter(dc.filters.RangedFilter(from, d3time));
+            dc.redrawAll();
+        }
 
-        var ndx = crossfilter(data);
+        function getRange() {
+            if (!hitslineChart) return null;
+            var rangedFilter = hitslineChart.filters()[0];
+            if (!rangedFilter) return null;
+            var from = rangedFilter[0];
+            var to = rangedFilter[1];
+            return { from: from, to: to };
+        }
 
-        dateDim = ndx.dimension(function(d) {
-            return d.date;
-        });
-        var typeDim = ndx.dimension(function(d) {
-            return d.type;
-        });
-
-        var minDate = dateDim.bottom(1)[0].date;
-        var maxDate = dateDim.top(1)[0].date;
-
-
-        var readGroup = dateDim.group().reduceSum(function(d) {
-            return d.read;
-        });
-        // var modifyGroup = dateDim.group().reduceSum(function(d) {
-        //     return d.modify;
-        // });
-
-        hitslineChart = dc.barChart('#chart-line-hitsperday');
-        hitslineChart
-            .width(700).height(200)
-            .dimension(dateDim)
-            .group(readGroup, 'Read')
-            //.group(modifyGroup, 'Modify')
-            //.renderArea(true)//for line chart
-            .centerBar(true) //for line chart
-            .x(d3.time.scale().domain([minDate, maxDate]))
-            .legend(dc.legend().x(50).y(10).itemHeight(13).gap(5))
-            .yAxisLabel('Hits per day');
-
-
-        // dummy for update
-        var hits = dateDim.group().reduceSum(function(d) {
-            return d.total;
-        });
-        var dummy = dc.pieChart('#dummy');
-        dummy
-            .width(200).height(200)
-            .dimension(dateDim)
-            .group(hits)
-            .innerRadius(30);
-        dummy._doRedraw = function() {
-            var filtered = typeDim.filter().top(Infinity);
-            setRecords(filtered);
-            if (hasSelectedViews()) {
-                updateStatistics();
+        function showRange() {
+            var range = getRange();
+            if (!range) {
+                document.getElementById('fromCurrent').innerHTML = '';
+                document.getElementById('toCurrent').innerHTML = '';
+                return;
             }
-            showRange();
-        };
-        dummy._doRender = function() {
-            var filtered = typeDim.filter().top(Infinity);
-            setRecords(filtered);
-            if (hasSelectedViews()) {
-                updateStatistics();
-            }
-            showRange();
-        };
-        dc.renderAll();
-    }
-
-    function fromPressed() {
-        var text = document.getElementById('fromDate').value;
-        var parser = d3.time.format("%Y%m%d").parse;
-        var d3time = parser(text);
-        if (!d3time) {
-            window.alert('invalid dateformat');
-            return;
-        }
-        if (!hitslineChart) {
-            return;
+            document.getElementById('fromCurrent').innerHTML = range.from;
+            document.getElementById('toCurrent').innerHTML = range.to;
         }
 
-        var to;
-        var range = getRange();
-        if (range) {
-            to = range.to;
-        } else {
-            to = dateDim.top(1)[0].date;
-        }
-        hitslineChart.filter(null);
-        hitslineChart.filter(dc.filters.RangedFilter(d3time, to));
-        dc.redrawAll();
-    }
-
-    function toPressed() {
-        var text = document.getElementById('toDate').value;
-        var parser = d3.time.format("%Y%m%d").parse;
-        var d3time = parser(text);
-        if (!d3time) {
-            window.alert('invalid dateformat');
-            return;
+        // for open window
+        function openNewWindow() {
+            window.open('result.html');
         }
 
-        if (!hitslineChart) {
-            return;
+        function notify(childWindow) {
+            openGraph(childWindow);
         }
 
-        var from;
-        var range = getRange();
-        if (range) {
-            from = range.from;
-        } else {
-            from = dateDim.bottom(1)[0].date;
-        }
-        hitslineChart.filter(null);
-        hitslineChart.filter(dc.filters.RangedFilter(from, d3time));
-        dc.redrawAll();
-    }
+        // for graph
 
-    function getRange() {
-        if (!hitslineChart) return null;
-        var rangedFilter = hitslineChart.filters()[0];
-        if (!rangedFilter) return null;
-        var from = rangedFilter[0];
-        var to = rangedFilter[1];
-        return { from: from, to: to };
-    }
-
-    function showRange() {
-        var range = getRange();
-        if (!range) {
-            document.getElementById('fromCurrent').innerHTML = '';
-            document.getElementById('toCurrent').innerHTML = '';
-            return;
-        }
-        document.getElementById('fromCurrent').innerHTML = range.from;
-        document.getElementById('toCurrent').innerHTML = range.to;
-    }
-
-    // for open window
-    function openNewWindow() {
-        window.open('result.html');
-    }
-
-    function notify(childWindow) {
-        openGraph(childWindow);
-    }
-
-    // for graph
-
-    function openGraph(childWin) {
-        var authors = getSelectedAuthors();
-        authors.forEach(function(author) {
-            author.links = {};
-            var reads = author.counter.reads;
-            reads.forEach(function(read) {
-                var note = gObjectsTable[read.targetId];
-                note.authors.forEach(function(toId) {
-                    if (!author.links[toId]) {
-                        author.links[toId] = 0;
-                    }
-                    author.links[toId]++;
+        function openGraph(childWin) {
+            var authors = getSelectedAuthors();
+            authors.forEach(function (author) {
+                author.links = {};
+                var reads = author.counter.reads;
+                reads.forEach(function (read) {
+                    var note = gObjectsTable[read.targetId];
+                    note.authors.forEach(function (toId) {
+                        if (!author.links[toId]) {
+                            author.links[toId] = 0;
+                        }
+                        author.links[toId]++;
+                    });
                 });
             });
-        });
 
-        var graphdata = { nodes: [], links: [] };
-        var authorIds = {};
-        var authorId = 0;
-        authors.forEach(function(author) {
-            var name = author.name;
-            graphdata.nodes[authorId] = { 'name': name, 'group': '1' };
-            authorIds[author._id] = authorId;
-            authorId++;
-        });
+            var graphdata = { nodes: [], links: [] };
+            var authorIds = {};
+            var authorId = 0;
+            authors.forEach(function (author) {
+                var name = author.name;
+                graphdata.nodes[authorId] = { 'name': name, 'group': '1' };
+                authorIds[author._id] = authorId;
+                authorId++;
+            });
 
-        authors.forEach(function(author) {
-            Object.keys(author.links).forEach(function(toId) {
-                var to = authorIds[toId];
-                if (!to) { return; } //filtered author              
-                var from = authorIds[author._id];
-                var value = author.links[toId];
-                graphdata.links.push({ source: from, target: to, weight: value });
+            authors.forEach(function (author) {
+                Object.keys(author.links).forEach(function (toId) {
+                    var to = authorIds[toId];
+                    if (!to) { return; } //filtered author              
+                    var from = authorIds[author._id];
+                    var value = author.links[toId];
+                    graphdata.links.push({ source: from, target: to, weight: value });
+                });
+            });
+
+            if (childWin) {
+                childWin.graphinit(graphdata);
+            } else {
+                graphinit(graphdata);
+            }
+        }
+
+        function graphinit(json) {
+
+            var width = 960,
+                height = 500
+
+            var svg = d3.select("#graph").append("svg")
+                .attr("width", width)
+                .attr("height", height);
+
+            var force = d3.layout.force()
+                .gravity(0.05)
+                .distance(100)
+                .charge(-100)
+                .size([width, height]);
+
+            force
+                .nodes(json.nodes)
+                .links(json.links)
+                .start();
+
+            var link = svg.selectAll(".link")
+                .data(json.links)
+                .enter().append("line")
+                .attr("class", "link")
+                .style("stroke-width", function (d) { return Math.sqrt(d.weight); });
+
+            var node = svg.selectAll(".node")
+                .data(json.nodes)
+                .enter().append("g")
+                .attr("class", "node")
+                .call(force.drag);
+
+            node.append("circle")
+                //            .attr("xlink:href", "https://github.com/favicon.ico")
+                .attr("r", 7)
+                .attr("fill", "gray");
+            //            .attr("x", -8)
+            //            .attr("y", -8)
+
+            node.append("text")
+                .attr("dx", 12)
+                .attr("dy", ".35em")
+                .text(function (d) { return d.name });
+
+            force.on("tick", function () {
+                link.attr("x1", function (d) { return d.source.x; })
+                    .attr("y1", function (d) { return d.source.y; })
+                    .attr("x2", function (d) { return d.target.x; })
+                    .attr("y2", function (d) { return d.target.y; });
+
+                node.attr("transform", function (d) { return "translate(" + d.x + "," + d.y + ")"; });
+            });
+        }
+
+        function toLocal() {
+            $('#serverURL').attr('value', 'http://localhost:9000/');
+        }
+
+        // localstorage
+        function loadSetting() {
+            gAuthors.forEach(function (author) {
+                $('#author_' + author._id).prop('checked', false);
+            });
+            var authors = JSON.parse(localStorage.getItem('authors'));
+            authors.forEach(function (author) {
+                $('#author_' + author._id).prop('checked', author.checked);
+                $('#authorname_' + author._id).prop('value', author.name);
+            });
+        }
+
+        function saveSetting() {
+            gAuthors.forEach(function (author) {
+                author.name = $('#authorname_' + author._id).prop('value');
+                author.checked = $('#author_' + author._id).prop('checked');
+            });
+            localStorage.setItem('authors', JSON.stringify(gAuthors));
+        }
+
+        //save and load
+        function save() {
+            var saveObject = { gAuthors, gAuthorsTable, gObjects, gObjectsTable, gRecords, gViews, gViewsTable };
+            var saveString = JSON.stringify(saveObject);
+            var blob = new Blob([saveString], { type: "text/json" });
+            var a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.target = '_blank';
+            var d = new Date();
+            var dStr = d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
+            a.download = dStr + '.json';
+            a.click();
+        }
+
+        function load(object) {
+            gAuthors = object.gAuthors;
+            gAuthorsTable = object.gAuthorsTable;
+            gObjects = object.gObjects;
+            gObjectsTable = object.gObjectsTable;
+            gRecords = object.gRecords;
+            gViews = object.gViews;
+            gViewsTable = object.gViewsTable;
+            setRecords(gRecords);
+            initdc(gRecords);
+            initializeDOMforCommunity();
+        }
+
+        $(window).on("load", function () {
+            var fileselector = document.getElementById("fileselector");
+            fileselector.addEventListener('change', function (e) {
+                var file = e.target.files[0];
+                var reader = new FileReader();
+                reader.addEventListener('load', function () {
+                    var text = reader.result;
+                    load(JSON.parse(text));
+                });
+                reader.readAsText(file);
             });
         });
 
-        if (childWin) {
-            childWin.graphinit(graphdata);
-        } else {
-            graphinit(graphdata);
-        }
-    }
-
-    function graphinit(json) {
-
-        var width = 960,
-            height = 500
-
-        var svg = d3.select("#graph").append("svg")
-            .attr("width", width)
-            .attr("height", height);
-
-        var force = d3.layout.force()
-            .gravity(0.05)
-            .distance(100)
-            .charge(-100)
-            .size([width, height]);
-
-        force
-            .nodes(json.nodes)
-            .links(json.links)
-            .start();
-
-        var link = svg.selectAll(".link")
-            .data(json.links)
-            .enter().append("line")
-            .attr("class", "link")
-            .style("stroke-width", function(d) { return Math.sqrt(d.weight); });
-
-        var node = svg.selectAll(".node")
-            .data(json.nodes)
-            .enter().append("g")
-            .attr("class", "node")
-            .call(force.drag);
-
-        node.append("circle")
-            //            .attr("xlink:href", "https://github.com/favicon.ico")
-            .attr("r", 7)
-            .attr("fill", "gray");
-        //            .attr("x", -8)
-        //            .attr("y", -8)
-
-        node.append("text")
-            .attr("dx", 12)
-            .attr("dy", ".35em")
-            .text(function(d) { return d.name });
-
-        force.on("tick", function() {
-            link.attr("x1", function(d) { return d.source.x; })
-                .attr("y1", function(d) { return d.source.y; })
-                .attr("x2", function(d) { return d.target.x; })
-                .attr("y2", function(d) { return d.target.y; });
-
-            node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
-        });
-    }
-
-    function toLocal() {
-        $('#serverURL').attr('value', 'http://localhost:9000/');
-    }
-
-    // localstorage
-    function loadSetting() {
-        gAuthors.forEach(function(author) {
-            $('#author_' + author._id).prop('checked', false);
-        });
-        var authors = JSON.parse(localStorage.getItem('authors'));
-        authors.forEach(function(author) {
-            $('#author_' + author._id).prop('checked', author.checked);
-            $('#authorname_' + author._id).prop('value', author.name);
-        });
-    }
-
-    function saveSetting() {
-        gAuthors.forEach(function(author) {
-            author.name = $('#authorname_' + author._id).prop('value');
-            author.checked = $('#author_' + author._id).prop('checked');
-        });
-        localStorage.setItem('authors', JSON.stringify(gAuthors));
-    }
     </script>
 </head>
 
@@ -656,10 +699,25 @@
             <input type="button" value="Login" onclick="loginPressed()">
         </li>
     </ul>
+
     <!-- communities -->
-    <h1>communities:</h1>
-    <ul id="communities">
-    </ul>
+    <div>
+        <h1>communities:</h1>
+        <ul id="communities">
+        </ul>
+    </div>
+
+    <!-- community -->
+    <div>
+        <h1>Community:
+            <span id="communityname"></span>
+        </h1>
+        <br>
+        <input type="button" value="Save" onclick="save()">
+        <input id="fileselector" type="file">
+    </div>
+
+
     <!-- notes -->
     <!--<div style="float:left; width: 40%;">-->
     <div>
@@ -694,7 +752,9 @@
     <input id="toDate" type="text" value="20160302">
     <input type="button" value="To" onclick="toPressed()">
     <!-- notes -->
-    <h1>Basic Statistics: <span id="viewname"></span></h1>
+    <h1>Basic Statistics:
+        <span id="viewname"></span>
+    </h1>
     <table border="1" id="notes">
     </table>
     <hr>
