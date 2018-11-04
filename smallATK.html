@@ -57,6 +57,9 @@
                 tr += '<td>' + '<input id="view_' + view._id + '" type="checkbox">' + '</td>';
                 tr += '<td>' + view.title + '</td>';
                 tr += '<td>' + view.data.numOfNotes + '</td>';
+                view.data.weeks.forEach(function (week) {
+                    tr += '<td>' + week.count + '</td>';
+                });
                 tr += '</tr>';
                 $('#views').append(tr);
             });
@@ -211,6 +214,7 @@
                 });
                 view.data.objects = objects;
                 view.data.numOfNotes = numOfNotes;
+                initView2(view);
                 handler();
             });
         }
@@ -358,8 +362,12 @@
         var hitslineChart;
         var dateDim;
 
+        var minDate;
+        var maxDate;
+
+        var parseDate = d3.time.format("%Y-%m-%dT%H:%M:%S.%LZ").parse;
+
         function initdc(data) {
-            var parseDate = d3.time.format("%Y-%m-%dT%H:%M:%S.%LZ").parse;
             data.forEach(function (d) {
                 d.date = parseDate(d.timestamp);
                 if (d.type === 'read') {
@@ -384,8 +392,8 @@
                 return d.type;
             });
 
-            var minDate = dateDim.bottom(1)[0].date;
-            var maxDate = dateDim.top(1)[0].date;
+            minDate = dateDim.bottom(1)[0].date;
+            maxDate = dateDim.top(1)[0].date;
 
 
             var readGroup = dateDim.group().reduceSum(function (d) {
@@ -565,7 +573,8 @@
             var width = 960,
                 height = 500
 
-            var svg = d3.select("#graph").append("svg")
+            //var svg = d3.select("#graph").append("svg")
+            var svg = d3.select("#sna")
                 .attr("width", width)
                 .attr("height", height);
 
@@ -640,7 +649,7 @@
 
         //save and load
         function save() {
-            var saveObject = { gAuthors, gAuthorsTable, gObjects, gObjectsTable, gRecords, gViews, gViewsTable };
+            var saveObject = { gAuthors, gObjects, gRecords, gViews };
             var saveString = JSON.stringify(saveObject);
             var blob = new Blob([saveString], { type: "text/json" });
             var a = document.createElement("a");
@@ -654,12 +663,21 @@
 
         function load(object) {
             gAuthors = object.gAuthors;
-            gAuthorsTable = object.gAuthorsTable;
+            gAuthorsTable = {};
+            gAuthors.forEach(function (author) {
+                gAuthorsTable[author._id] = author;
+            });
             gObjects = object.gObjects;
-            gObjectsTable = object.gObjectsTable;
+            gObjectsTable = {};
+            gObjects.forEach(function (object) {
+                gObjectsTable[object._id] = object;
+            });
             gRecords = object.gRecords;
             gViews = object.gViews;
-            gViewsTable = object.gViewsTable;
+            gViews.forEach(function (view) {
+                initView2(view);
+                gViewsTable[view._id] = view;
+            });
             setRecords(gRecords);
             initdc(gRecords);
             initializeDOMforCommunity();
@@ -677,6 +695,47 @@
                 reader.readAsText(file);
             });
         });
+
+        //http://opentechnica.blogspot.jp/2012/03/javascript.html
+
+        Date.prototype.getDayOfYear = function () {
+            var onejan = new Date(this.getFullYear(), 0, 1);
+            return Math.ceil((this - onejan) / 86400000);
+        };
+
+        Date.prototype.getWeekOfYear = function () {
+            var onejan = new Date(this.getFullYear(), 0, 1);
+            var offset = onejan.getDay() - 1;
+            var weeks = Math.floor((this.getDayOfYear() + offset) / 7);
+            return (onejan.getDay() == 0) ? weeks + 1 : weeks;
+        };
+
+        function initView2(view) {
+            var weeks = {};
+            //2000年からの週数．一年を52週と数える
+            //var min = 17 * 52 + 40;
+            //var max = 18 * 52 + 30;
+            var min = 15 * 52 + 40;
+            var max = 16 * 52 + 30;
+            for (var i = min; i < max; i++) {
+                weeks[i] = { count: 0 };
+            }
+            view.data.objects.forEach(function (object) {
+                if (object.type === 'Note') {
+                    var d = parseDate(object.created);
+                    var week = (d.getFullYear() - 2000) * 52 + d.getWeekOfYear();
+                    if (weeks[week]) {
+                        weeks[week].count++;
+                    }
+                }
+            });
+
+            var weeksArray = [];
+            for (var i = min; i < max; i++) {
+                weeksArray.push(weeks[i]);
+            }
+            view.data.weeks = weeksArray;
+        }
 
     </script>
 </head>
@@ -762,6 +821,9 @@
     <div id="graph">
         <input type="button" value="Create Graph" onclick="openGraph()">(Press while Basic Statistics are shown)
         <input type="button" value="Create Graph" onclick="openNewWindow()">
+    </div>
+    <div>
+        <svg id="sna"></svg>
     </div>
 </body>
 
