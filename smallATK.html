@@ -66,7 +66,8 @@
 
             $('#authors').html('<tr><th>Checked</th><th>Name</th><th>Nickname</th></tr>');
             gAuthors.forEach(function (author) {
-                author.name = author.firstName;
+                author.id = author.email.split('@')[0];
+                author.name = author.lastName + author.firstName;
                 var tr = '';
                 tr += '<tr>';
                 tr += '<td>' + '<input id="author_' + author._id + '" type="checkbox" checked>' + '</td>';
@@ -267,6 +268,7 @@
                 counter.drawings = [];
                 counter.others = [];
                 counter.reads = [];
+                counter.beingReads = [];
                 counter.modifies = [];
                 author.counter = counter;
             });
@@ -291,6 +293,8 @@
                         var counter = gAuthorsTable[record.authorId].counter;
                         if (record.type === 'read') {
                             counter.reads.push(record);
+                            gAuthorsTable[object.authors[0]].counter.beingReads.push(record);
+                            //gAuthorsTable[object.authorId].counter
                         } else if (record.type === 'modified') {
                             counter.modifies.push(record);
                         }
@@ -338,18 +342,20 @@
             });
 
             //make table
-            $('#notes').html('<tr><th>Title</th><th># Notes</th><th># Drawings</th><th># reads</th><th># notes read</th><th>% of readings</th><th># modifies</th><th># notes modified</th></tr>');
+            $('#notes').html('<tr><th>ID</th><th>Name</th><th># Notes</th><th># Drawings</th><th># notes read</th><th>% of readings</th><th># beingReads</th><th># modifies</th><th># notes modified</th></tr>');
             authors.forEach(function (author) {
                 var counter = author.counter;
                 var tr = '';
                 tr += '<tr>';
+                tr += '<td>' + author.id + '</td>';
                 tr += '<td>' + author.name + '</td>';
                 tr += '<td>' + counter.notes.length + '</td>';
                 tr += '<td>' + counter.drawings.length + '</td>';
                 //tr += '<td>' + counter.others.length + '</td>';
-                tr += '<td>' + counter.reads.length + '</td>';
+                //tr += '<td>' + counter.reads.length + '</td>';
                 tr += '<td>' + counter.readcount + '</td>';
                 tr += '<td>' + counter.percentOfReading + '</td>';
+                tr += '<td>' + counter.beingReads.length + '</td>';
                 tr += '<td>' + counter.modifies.length + '</td>';
                 tr += '<td>' + counter.modifycount + '</td>';
                 tr += '</tr>';
@@ -715,8 +721,11 @@
             //2000年からの週数．一年を52週と数える
             //var min = 17 * 52 + 40;
             //var max = 18 * 52 + 30;
-            var min = 15 * 52 + 40;
-            var max = 16 * 52 + 30;
+            // var min = 15 * 52 + 40;
+            // var max = 16 * 52 + 30;
+            //2021年度後期
+            var min = 21 * 52 + 30;
+            var max = 22 * 52 + 10;
             for (var i = min; i < max; i++) {
                 weeks[i] = { count: 0 };
             }
