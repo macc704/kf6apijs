@@ -247,6 +247,24 @@
             return getSelectedViews().length > 0;
         }
 
+        class KObjectList {
+            constructor() {
+                this.objectTable = {};
+            }
+            push(object) {
+                this.objectTable[object._id] = object;
+            }
+            get objects() {
+                return Object.values(this.objectTable);
+            }
+            get length() {
+                return Object.keys(this.objectTable).length;
+            }
+            byId(id) {
+                return this.objectTable(id);
+            }
+        }
+
         //  Show data algorithm
         function updateStatistics() {
             var views = getSelectedViews();
@@ -263,17 +281,18 @@
 
             //initialize counter
             gAuthors.forEach(function (author) {
+                author.readingNotes = new KObjectList();
+                author.notes = new KObjectList();
                 var counter = {};
                 counter.notes = [];
                 counter.drawings = [];
                 counter.others = [];
                 counter.reads = [];
-                counter.beingReads = [];
                 counter.modifies = [];
                 author.counter = counter;
             });
 
-            //select objects
+            //selectされたviewから，objectを重複しないように抽出する
             var objectsTable = {}
             views.forEach(function (view) {
                 var objectsInView = view.data.objects;
@@ -281,28 +300,15 @@
                     objectsTable[object._id] = object;
                 })
             });
-            var objects = [];
-            Object.keys(objectsTable).forEach(function (key) {
-                objects.push(objectsTable[key]);
-            });
+            var objects = Object.values(objectsTable);
 
-            //count
+            //オブジェクトの数をcountする
             objects.forEach(function (object) {
-                object.records.forEach(function (record) {
-                    if (object.type === 'Note') {
-                        var counter = gAuthorsTable[record.authorId].counter;
-                        if (record.type === 'read') {
-                            counter.reads.push(record);
-                            gAuthorsTable[object.authors[0]].counter.beingReads.push(record);
-                            //gAuthorsTable[object.authorId].counter
-                        } else if (record.type === 'modified') {
-                            counter.modifies.push(record);
-                        }
-                    }
-                });
                 object.authors.forEach(function (authorId) {
-                    var counter = gAuthorsTable[authorId].counter;
+                    var author = gAuthorsTable[authorId];
+                    var counter = author.counter;
                     if (object.type === 'Note') {
+                        author.notes.push(object);
                         counter.notes.push(object);
                     } else if (object.type === 'Drawing') {
                         counter.drawings.push(object);
@@ -312,27 +318,61 @@
                 });
             });
 
-            //calc % of note read
-            var numOfNotes = 0;
+            //ノートを抽出する
+            var notes = [];
             objects.forEach(function (object) {
                 if (object.type === 'Note') {
-                    numOfNotes++;
+                    notes.push(object);
                 }
             });
 
-            var authors = getSelectedAuthors();
+            //ノートのrecordを処理する
+            notes.forEach(function (note) {
+                note.readers = new KObjectList();
+                note.records.forEach(function (record) {
+                    if (record.type === 'read') {
+                        //自分が自分のノートを読んだ．は入れない
+                        if (note.authors[0] === record.authorId) {
+                            return;
+                        }
+                        var reader = gAuthorsTable[record.authorId];
+                        reader.readingNotes.push(note);
+                        note.readers.push(reader);
 
-            authors.forEach(function (author) {
-                var counter = author.counter;
-                var readinglist = {};
-                counter.reads.forEach(function (read) {
-                    readinglist[read.targetId] = 1;
+                        //var counter = gAuthorsTable[record.authorId].counter;
+                        //counter.reads.push(record);
+                        //var beingReads = gAuthorsTable[note.authors[0]].counter.beingReads;
+                        //beingReads.push(record);
+                        //gAuthorsTable[object.authorId].counter
+                    } else if (record.type === 'modified') {
+                        if (note.authors[0] == record.authorId) {
+                            console.log('OK');
+                        }
+                        var counter = gAuthorsTable[record.authorId].counter;
+                        counter.modifies.push(record);
+                    }
                 });
-                counter.readcount = Object.keys(readinglist).length;
-                counter.percentOfReading = Math.round((counter.readcount / numOfNotes) * 10000) / 100;
             });
 
+
+            var numOfNotes = notes.length;
+            var authors = getSelectedAuthors();
             authors.forEach(function (author) {
+                var counter = author.counter;
+
+                //他人のノートの読みを計算する                
+                counter.readcount = author.readingNotes.length;
+                var numOfOthersNote = numOfNotes - author.notes.length;
+                counter.percentOfReading = Math.round((counter.readcount / numOfOthersNote) * 1000) / 10;
+
+                //読まれた数を計算する
+                var readerCounts = 0;
+                author.notes.objects.forEach(function (note) {
+                    readerCounts += note.readers.length;
+                });
+                counter.beingReadCount = readerCounts;
+
+                //重複を避けて編集数を計算する
                 var counter = author.counter;
                 var modifylist = {};
                 counter.modifies.forEach(function (modify) {
@@ -355,7 +395,7 @@
                 //tr += '<td>' + counter.reads.length + '</td>';
                 tr += '<td>' + counter.readcount + '</td>';
                 tr += '<td>' + counter.percentOfReading + '</td>';
-                tr += '<td>' + counter.beingReads.length + '</td>';
+                tr += '<td>' + counter.beingReadCount + '</td>';
                 tr += '<td>' + counter.modifies.length + '</td>';
                 tr += '<td>' + counter.modifycount + '</td>';
                 tr += '</tr>';
@@ -630,7 +670,8 @@
         }
 
         function toLocal() {
-            $('#serverURL').attr('value', 'http://localhost:9000/');
+            //$('#serverURL').attr('value', 'http://localhost:9000/');
+            $('#serverURL').attr('value', 'https://kf6.si.aoyama.ac.jp/');
         }
 
         // localstorage
