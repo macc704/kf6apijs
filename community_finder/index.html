@@ -1,0 +1,69 @@
+<html>
+
+<head>
+    <script src="../jquery.js"></script>
+    <script src="../kf6api.js"></script>
+
+    <script>
+        function loginPressed() {
+            var serverURL = $('#serverURL').val();
+            kf6.setBaseURL(serverURL);
+
+            var uname = $('#uname').val();
+            var password = $('#password').val();
+            kf6.login(uname, password, function () {
+                getCommunities();
+            }, function (data) {
+                alert('login failed: ' + data.status);
+            });
+        }
+
+        function getCommunities() {
+            kf6.getCommunities(function (data) {
+                $('#communities').html('');
+                var html = ""
+                data.forEach(function (each) {
+                    html += "<tr>"
+                    html += "<td>"
+                    html += each._community.title
+                    html += "</td>"
+                    html += "<td>"
+                    html +=  each.communityId
+                    html += "</td>"
+                    html += "</tr>"
+                });
+                $('#communities').html(html);
+            });
+        }
+
+    </script>
+</head>
+
+<body>
+    <!-- login console -->
+    <h1>CommunityId Finder:</h1>
+    <ul>
+        <li>serverURL:
+            <input id="serverURL" style="width: 300px;" type="textfield" value="https://kf6.ikit.org/">
+            please put "/" on tail
+        </li>
+        <li>user:
+            <input id="uname" style="width: 300px;" type="textfield" value="">
+        </li>
+        <li>password:
+            <input id="password" style="width: 300px;" type="password" value="">
+        </li>
+        <li>
+            <input type="button" value="Login" onclick="loginPressed()">
+        </li>
+    </ul>
+
+    <!-- communities -->
+    <div>    
+        <h2>Communities:</h2>    
+        <table border="1" id="communities"></table>
+    </div>
+
+</body>
+
+</html>
